@@ -96,7 +96,7 @@ function 판차리기(설정 = {}) {
   상자.innerHeight = 800;
 
   const 문맥 = vm.createContext(상자);
-  for (const 이름 of ['protocol.js', 'parser.js']) {
+  for (const 이름 of ['protocol.js', 'parser.js', 'i18n.js']) {
     vm.runInContext(fs.readFileSync(path.join(확장칸, 이름), 'utf-8'), 문맥, { filename: 이름 });
   }
   vm.runInContext(fs.readFileSync(path.join(확장칸, 'panel.js'), 'utf-8'), 문맥,

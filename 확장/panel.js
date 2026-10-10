@@ -854,7 +854,12 @@ function 탭표만들기(줄들) {
   return 표;
 }
 
+// 사람 말 · GPT 말 · 파일 내용은 사용자 자료라 번역하지 않는다(번역기가 이 동안 멈춘다)
 function 마크다운그리기(글, 담을곳) {
+  return 번역멈춤(() => _마크다운그리기(글, 담을곳));
+}
+
+function _마크다운그리기(글, 담을곳) {
   const 줄들 = String(글 || '').split('\n');
   let i = 0;
   let 문단 = [];
@@ -1522,7 +1527,7 @@ function 기록그리기(본문 = $('본문'), 도구만 = false) {
       꺾.textContent = '>';
       const 글 = document.createElement('span');
       글.className = '글';
-      글.textContent = 선택보기(항목.글);
+      번역멈춤(() => { 글.textContent = 선택보기(항목.글); });
       상자.append(꺾, 글);
       본문.appendChild(상자);
       continue;
@@ -1531,7 +1536,7 @@ function 기록그리기(본문 = $('본문'), 도구만 = false) {
     if (항목.종류 === '예약') {
       const 줄 = document.createElement('div');
       줄.className = '예약알림';
-      줄.textContent = 항목.글;
+      번역멈춤(() => { 줄.textContent = 항목.글; });
       본문.appendChild(줄);
       continue;
     }
@@ -4148,7 +4153,7 @@ function 보기그리기() {
       번칸.textContent = String(번 + 1);
       const 줄칸 = document.createElement('span');
       줄칸.className = '줄';
-      줄칸.textContent = 줄글 || ' ';
+      번역멈춤(() => { 줄칸.textContent = 줄글 || ' '; });
       원본.append(번칸, 줄칸);
     });
     속.appendChild(원본);
@@ -4317,6 +4322,10 @@ $('메뉴단추').onclick = (e) => {
     ...파일메뉴항목(),
   ];
   항목들.push({ 글: '목표', 쪽: 목표있음 ? (화면.계획.진도 || '') : '세우기', 동작: 목표열기 });
+  항목들.push({
+    글: 'Language', 쪽: 지금언어() === 'en' ? 'English → 한국어' : '한국어 → English',
+    동작: () => { 언어바꾸기(지금언어() === 'en' ? 'ko' : 'en'); location.reload(); },
+  });
   if (화면.지금방 && !화면.방없는대화) 항목들.push({ 글: '새 대화로 넘기기', 쪽: '대화가 꽉 찼을 때', 동작: 새대화로넘기기누름 });
   항목들.push(
     { 글: '결과 다시 보내기', 쪽: '보내기가 막혔을 때', 동작: 결과다시보내기 },
@@ -4400,3 +4409,6 @@ setInterval(() => { if (보는탭 !== null) void 탭에게('패널심장'); }, 2
   }
 
 })();
+
+// 처음에 그려진 정적 글(panel.html)을 번역한다
+try { 처음글번역(); } catch (e) { /* 번역이 안 돼도 판은 그대로 돈다 */ }

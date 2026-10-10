@@ -265,13 +265,14 @@ def 만들기(자리: Path, 진짜: bool = False) -> Path:
     html = (확장칸 / "panel.html").read_text(encoding="utf-8")
 
     합친것 = []
-    for 이름 in ("protocol.js", "parser.js", "panel.js"):
+    for 이름 in ("protocol.js", "parser.js", "i18n.js", "panel.js"):
         글 = (확장칸 / 이름).read_text(encoding="utf-8")
         합친것.append(f"<script>\n// ── {이름} ──\n{글}\n</script>")
 
     # 따로 불러오던 것을 통째로 넣는다(파일 주소로 열어도 되게)
     html = html.replace('<script src="protocol.js"></script>', "")
     html = html.replace('<script src="parser.js"></script>', "")
+    html = html.replace('<script src="i18n.js"></script>', "")
     html = html.replace('<script src="panel.js"></script>', "")
     끼울것 = 가짜서버
     if 진짜:

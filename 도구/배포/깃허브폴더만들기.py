@@ -48,7 +48,7 @@ def 모으기() -> list:
     for 파일 in sorted((뿌리 / "도구").glob("*")):
         if 파일.is_file() and 파일.suffix in (".py", ".bat"):
             나온.append((f"도구/{파일.name}", 파일))
-    for 이름 in ("설치.py", "부트머리.cmd", "만들기.py", "깃허브폴더만들기.py"):
+    for 이름 in ("설치.py", "부트머리.cmd", "만들기.py", "깃허브폴더만들기.py", "README.en.md", "README.ko.md"):
         나온.append((f"도구/배포/{이름}", 이칸 / 이름))
     시험 = 뿌리 / "도구" / "시험"
     for 파일 in sorted(시험.iterdir()):
@@ -70,68 +70,6 @@ def 개인자료찾기(목록: list) -> list:
                 문제.append(f"{이름}: '{낱말}' {글.count(낱말)}번")
     return 문제
 
-
-README = """# GPT Local Agent
-
-**Turn ChatGPT into a hands-on coding agent on your own PC.**
-A Chrome extension + a local bridge server that lets ChatGPT (in your browser) read your project files,
-edit code, run commands and long jobs — with approval modes so you stay in control.
-
-> 한국어: ChatGPT 웹 대화창이 **내 PC의 파일을 읽고, 고치고, 명령을 실행**하게 해 주는 Chrome 확장 + 로컬 서버입니다.
-> 전체권한 / 자동 / 수동 승인 모드로 어디까지 GPT에게 맡길지 정합니다. (Windows)
-
-```
-ChatGPT (web)  ->  Chrome extension  ->  127.0.0.1:8765  ->  local Python server  ->  your files / terminal
-      ^                                                                               |
-      +----------------------------- tool results ------------------------------------+
-```
-
-## Approval modes
-
-| Mode | Who decides | Asks you before... |
-|---|---|---|
-| **Full** (전체권한) | ChatGPT | package installs, screen/keyboard control, outside tools (always) |
-| **Auto** (자동) | ChatGPT for safe work inside your project folder | risky commands, deleting/moving many files, reading outside the folder, installs |
-| **Manual** (수동) | You | every edit, delete, command, git commit, helper agent |
-
-Always blocked in every mode: destructive commands (`rm -rf`, `format`, `shutdown`, `git push` ...) and reading secret files (`.env`, keys).
-Secret files such as `.env` are **write-only** for ChatGPT, so you can fill in API keys yourself without sending them to ChatGPT.
-
-## What the agent can do
-
-Read / search / edit files (with automatic backups), run commands and long jobs (training etc.), git, plans and memory,
-reminders, web reading, attach images to the chat, look at your screen and send keyboard/mouse input
-(**each needs your explicit per-window, time-limited approval**), and spawn read-only helper agents.
-
-## Install (Windows)
-
-**Easy:** download `GPT-LocalAgent-Setup.cmd` from the [Releases](../../releases) page and double-click it.
-It checks Python (3.10+), installs the server, and walks you through loading the extension.
-
-**Manual:**
-1. `python -X utf8 서버/서버.py` (Python 3.10+; Pillow is optional, for image tools)
-2. Chrome -> `chrome://extensions` -> turn on *Developer mode* -> *Load unpacked* -> select the `확장` folder
-3. Create a ChatGPT *Project* and paste the instructions from `문서/프로토콜.md` (the text inside the code fence) into its *Instructions*
-4. Open a chat inside that project, click the extension icon to open the side panel, pick a work folder with **+**
-
-## Safety notes
-
-- ChatGPT can act on your computer through this tool. Start with **Manual** mode and move to **Auto** once you trust it.
-- The server only listens on `127.0.0.1` and only trusts the extension and websites you approve.
-- Reading / writing is limited to your user folder (configurable in `서버/설정.json`).
-- This project is not affiliated with OpenAI. Automating a web UI may be against the terms of the service you use; use at your own risk.
-- Do not use the input-control tool to automate online multiplayer games (anti-cheat bans).
-
-## Tests
-
-```
-python -X utf8 도구/시험/다돌리기.py
-```
-
-## License
-
-MIT
-"""
 
 GITIGNORE = """# Python
 __pycache__/
@@ -179,12 +117,22 @@ def main():
             print("  -", 줄)
         return 1
     if 나가는곳.exists():
-        shutil.rmtree(나가는곳)
+        # 폴더가 탐색기나 브라우저 업로드 창에 열려 있으면 폴더째 지우지 못한다 — 파일만 지우고 폴더는 둔다
+        for 낡은 in sorted(나가는곳.rglob("*"), key=lambda q: len(q.parts), reverse=True):
+            try:
+                if 낡은.is_file():
+                    낡은.unlink()
+                else:
+                    낡은.rmdir()
+            except OSError:
+                pass
     for 이름, 자리 in 목록:
         가는곳 = 나가는곳 / 이름
         가는곳.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(자리, 가는곳)
-    (나가는곳 / "README.md").write_text(README, encoding="utf-8", newline="\n")
+    # README 원본은 같은 폴더의 README_깃허브.md (한국어 위 · 영어 아래)
+    shutil.copy2(이칸 / "README.en.md", 나가는곳 / "README.md")        # 영어 기본
+    shutil.copy2(이칸 / "README.ko.md", 나가는곳 / "README.ko.md")     # 한국어(README.md 맨 위 링크로 이동)
     (나가는곳 / ".gitignore").write_text(GITIGNORE, encoding="utf-8", newline="\n")
     수 = sum(1 for _ in 나가는곳.rglob("*") if _.is_file())
     print(f"✓ {나가는곳}")

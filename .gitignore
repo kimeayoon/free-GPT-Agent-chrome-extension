@@ -218,3 +218,32 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# GPT Local Agent local data (never commit)
+서버/방/
+서버/방목록.json
+서버/방목록백업/
+서버/설정.json
+서버/권한.json
+서버/허용사이트.json
+서버/뒤뜰/
+서버/실행로그.txt
+서버/에러로그.txt
+서버/서버출력.txt
+서버/자동켜기/host.json
+서버/자동켜기/agent_host.bat
+서버/자동켜기/켜기일지.txt
+서버/자동켜기/서버출력.txt
+.agent/
+작업기록/
+_archive/
+workspace/
+설치된것/
+도구/배포/결과/
+도구/배포/깃허브용/
+
+# secrets
+.env
+.env.*
+*.pem
+*.key

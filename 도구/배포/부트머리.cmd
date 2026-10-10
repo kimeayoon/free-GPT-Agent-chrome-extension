@@ -1,9 +1,9 @@
 @echo off
 chcp 65001 >nul
-title GPT 로컬 에이전트 설치
+title GPT Local Agent - Setup
 setlocal EnableExtensions
 echo.
-echo   GPT 로컬 에이전트 설치를 시작합니다...
+echo   Starting GPT Local Agent setup...
 
 set "PYX="
 for %%C in ("py -3" "python" "python3") do (
@@ -17,27 +17,28 @@ if not defined PYX goto :nopy
 set "RC=%ERRORLEVEL%"
 if not "%RC%"=="0" (
   echo.
-  echo   설치가 끝까지 되지 않았습니다. 위 글을 캡처해서 보내 주세요.
+  echo   Setup did not finish. Please take a screenshot of the text above and send it to the person who gave you this file.
   pause
 )
 exit /b %RC%
 
 :nopy
 echo.
-echo   이 프로그램을 돌리려면 파이썬 3.10 이상이 필요한데 이 PC 에서 찾지 못했습니다.
+echo   Python 3.10 or newer is required, but it was not found on this PC.
 echo.
 where winget >nul 2>&1
 if errorlevel 1 goto :nowinget
-echo   파이썬을 자동으로 설치합니다. (몇 분 걸릴 수 있습니다)
+echo   Installing Python automatically. This can take a few minutes.
 winget install -e --id Python.Python.3.12 --scope user --silent --accept-package-agreements --accept-source-agreements
 echo.
-echo   설치가 끝났으면 이 파일을 한 번 더 더블클릭해 주세요.
+echo   When the installation has finished, double-click this file once more.
 pause
 exit /b 1
 
 :nowinget
-echo   자동 설치 도구(winget)도 없습니다. 아래 주소에서 파이썬을 받아 설치한 뒤,
-echo   설치할 때 "Add python.exe to PATH" 에 체크하고 이 파일을 다시 더블클릭해 주세요.
+echo   The automatic installer (winget) is not available either.
+echo   Please download Python from the address below, and during setup tick "Add python.exe to PATH".
+echo   Then double-click this file again.
 echo.
 echo       https://www.python.org/downloads/
 start "" "https://www.python.org/downloads/"

@@ -53,8 +53,8 @@ def 확장아이디찾기() -> list[str]:
 def 등록():
     아이디들 = 확장아이디찾기()
     if not 아이디들:
-        print("✗ 크롬에서 이 확장을 못 찾았습니다.")
-        print(f"  chrome://extensions 에서 '압축해제된 확장 프로그램 로드' 로 {확장칸} 을 먼저 불러오세요.")
+        print("ERROR: This extension was not found in Chrome.")
+        print(f"  In chrome://extensions use 'Load unpacked' and choose {확장칸} first, then run this again.")
         raise SystemExit(1)
 
     켜기칸.mkdir(parents=True, exist_ok=True)
@@ -85,25 +85,25 @@ def 등록():
     with winreg.CreateKey(winreg.HKEY_CURRENT_USER, 레지스트리자리) as 열쇠:
         winreg.SetValueEx(열쇠, "", 0, winreg.REG_SZ, str(설명파일))
 
-    print("✓ 자동 켜기를 등록했습니다.")
-    print(f"  확장 ID   : {', '.join(아이디들)}")
-    print(f"  파이썬    : {파이썬}")
-    print(f"  설명 파일 : {설명파일}")
-    print(f"  레지스트리: HKCU\\{레지스트리자리}")
-    print("  이제 확장을 새로고침하면, 판을 열 때 서버가 스스로 켜집니다.")
+    print("OK: Auto-start registered.")
+    print(f"  Extension ID : {', '.join(아이디들)}")
+    print(f"  Python       : {파이썬}")
+    print(f"  Host file    : {설명파일}")
+    print(f"  Registry     : HKCU\\{레지스트리자리}")
+    print("  Reload the extension; the server will then start by itself when you open the side panel.")
 
 
 def 지우기():
     try:
         winreg.DeleteKey(winreg.HKEY_CURRENT_USER, 레지스트리자리)
-        print("✓ 레지스트리에서 지웠습니다.")
+        print("OK: Removed from the registry.")
     except FileNotFoundError:
-        print("· 등록돼 있지 않았습니다.")
-    print(f"  (파일은 남겨 둡니다: {켜기칸})")
+        print("It was not registered.")
+    print(f"  (The files are kept: {켜기칸})")
 
 
 if __name__ == "__main__":
     받개 = argparse.ArgumentParser()
-    받개.add_argument("--지우기", action="store_true")
+    받개.add_argument("--지우기", "--remove", dest="지우기", action="store_true")
     인자 = 받개.parse_args()
     지우기() if 인자.지우기 else 등록()
