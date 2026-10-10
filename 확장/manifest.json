@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "GPT Local Agent",
+  "version": "3.106.0",
+  "description": "ChatGPT 옆에 붙는 조종판. 승인·일할 곳·진행 상황을 여기서 봅니다.",
+  "permissions": [
+    "storage",
+    "tabs",
+    "sidePanel",
+    "nativeMessaging"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1:8765/*",
+    "https://chatgpt.com/*",
+    "https://chat.openai.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "panel.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://chatgpt.com/*",
+        "https://chat.openai.com/*"
+      ],
+      "js": [
+        "protocol.js",
+        "selectors.js",
+        "parser.js",
+        "다듬기.js",
+        "composer.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "로컬 에이전트 열기"
+  },
+  "commands": {
+    "창토글": {
+      "suggested_key": {
+        "default": "Alt+Shift+A"
+      },
+      "description": "로컬 에이전트 사이드 패널 열기"
+    }
+  }
+}

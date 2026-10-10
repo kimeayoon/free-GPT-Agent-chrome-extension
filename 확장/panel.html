@@ -1,0 +1,1108 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>로컬 에이전트</title>
+<style>
+  :root {
+    --바탕: #262624;
+    --바탕2: #1e1c1a;
+    --바탕3: #33312e;
+    --바탕4: #3a3733;
+    --선: #3d3a36;
+    --선2: #4a4640;
+    --글: #e8e6e1;
+    --흐린글: #a39d94;
+    --아주흐린글: #726c63;
+    --강조: #cc785c;
+    --강조바탕: #3d2a20;
+    --강조테두리: #a85a3f;
+    --좋음: #7fbf9a;
+    --나쁨: #d4796a;
+    --기다림: #d9a441;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%; overflow: hidden;
+    background: var(--바탕); color: var(--글);
+    font: 13px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI",
+          ui-sans-serif, system-ui, sans-serif;
+  }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--선2); border-radius: 5px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--아주흐린글); }
+
+  #틀 { display: flex; flex-direction: column; height: 100%; }
+
+  /* ── 상단 바 ── */
+  #상단바 {
+    display: flex; align-items: center; gap: 4px; flex: 0 0 auto;
+    padding: 7px 6px 7px 6px; border-bottom: 1px solid var(--선);
+  }
+  #제목 {
+    flex: 1 1 auto; min-width: 0; display: flex; align-items: baseline; gap: 7px;
+    padding: 2px 6px; border-radius: 7px; cursor: default;
+  }
+  #방이름 {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-weight: 620;
+  }
+  #폴더이름 {
+    flex: 0 0 auto; color: var(--아주흐린글); font-size: 11.5px;
+    background: var(--바탕3); padding: 1px 7px; border-radius: 5px;
+    max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .아이콘 {
+    flex: 0 0 auto; width: 27px; height: 27px; border: none; border-radius: 7px;
+    background: transparent; color: var(--흐린글); cursor: pointer;
+    font-size: 14px; line-height: 1;
+  }
+  .아이콘:hover { background: var(--바탕4); color: var(--글); }
+  .아이콘.켬 { background: var(--강조바탕); color: #f0c4ae; }
+
+  #파일도구 { flex: 0 0 auto; display: flex; align-items: center; gap: 1px; }
+  #파일도구 .아이콘 { width: 22px; height: 22px; font-size: 12px; }
+
+  /* ── 상태줄 ── */
+  #상태줄 {
+    flex: 0 0 auto; padding: 5px 13px; color: var(--흐린글); font-size: 11.5px;
+    display: flex; align-items: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* ── 수치줄 — 지금 일이 얼마나 걸렸나·잘 도나. 상태줄 바로 아래 ── */
+  #수치줄 {
+    flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 1px 12px;
+    padding: 0 13px 5px; font-size: 10.5px; color: var(--아주흐린글);
+  }
+  #수치줄[hidden] { display: none; }
+  #수치줄 span { white-space: nowrap; cursor: default; }
+
+  /* ── 본문 ── */
+  /* 굴리는 칸은 #흐름 하나다. (GPT가 쓰는 글을 실시간으로 보이던 '진행 카드' 는 없앴다 —
+     대화는 거의 ChatGPT 창에서 하고, 판은 지금 무엇을 하는지만 한 줄로 보인다.) */
+  #흐름 { flex: 1 1 auto; overflow-y: auto; min-height: 0; }
+  #본문 { padding: 4px 13px 10px; }
+  .빈안내 { color: var(--아주흐린글); padding: 12px 2px; }
+
+  /* 읽는 화면. 좁은 패널이라도 '문서를 읽는' 느낌이 나게 넉넉히 띄운다. */
+  .답 { margin-bottom: 22px; font-size: 13.5px; line-height: 1.72; }
+
+  /* ── 서식 (마크다운) ── */
+  .문단 { white-space: pre-wrap; word-break: break-word; margin: 0 0 14px; }
+  .답 > *:last-child { margin-bottom: 0; }
+  .문단 b, .답 b { color: #f6efe8; font-weight: 650; }
+  .제목 { font-weight: 700; color: #f7f0e9; margin: 22px 0 9px; line-height: 1.4; }
+  .답 > .제목:first-child { margin-top: 2px; }
+  .제목1 { font-size: 18px; }
+  .제목2 { font-size: 16px; }
+  .제목3 { font-size: 14px; }
+  .제목4 { font-size: 13px; color: var(--흐린글); }
+  .가로줄 { height: 1px; background: var(--선); margin: 20px 0; }
+  .목록항 { display: flex; gap: 9px; margin: 0 0 7px 2px; }
+  .목록항 .점 { flex: 0 0 auto; color: var(--아주흐린글); min-width: 14px; }
+  .인용 {
+    border-left: 2px solid var(--선2); padding: 2px 0 2px 13px;
+    margin: 14px 0; color: #e7ded6; white-space: pre-wrap; word-break: break-word;
+  }
+  code.속코드 {
+    background: #17140f; color: #d9b8a4; border-radius: 4px; padding: 1px 5px;
+    font: 11.5px ui-monospace, Menlo, Consolas, monospace;
+  }
+  pre.코드덩이 {
+    background: #17140f; color: #c6cdd4; border: 1px solid var(--선);
+    border-radius: 8px; padding: 9px 11px; margin: 7px 0; overflow-x: auto;
+    font: 11.5px/1.5 ui-monospace, Menlo, Consolas, monospace;
+    white-space: pre; word-break: normal;
+  }
+  /* 표 — 클로드가 그리는 꼴 그대로.
+     머리줄에 옅은 띠를 깔고, 칸마다 세로줄을 넣는다.
+     좁은 판에서는 가로로 밀어 볼 수 있게 감싸개를 따로 둔다. */
+  .표감개 {
+    margin: 16px 0; overflow-x: auto;
+    border: 1px solid var(--선); border-radius: 9px; background: var(--바탕2);
+  }
+  /* width:100% 로 두면 좁은 판에서 칸이 짜부라져 '화/면/잡/기' 처럼
+     한 글자씩 세로로 쌓인다. max-content 로 두고 감개가 옆으로 밀리게 한다. */
+  table.표 {
+    border-collapse: collapse; width: max-content; min-width: 100%;
+    font-size: 12.5px; line-height: 1.6;
+  }
+  table.표 th, table.표 td {
+    padding: 8px 11px; text-align: left; vertical-align: top;
+    border-bottom: 1px solid var(--선); border-right: 1px solid var(--선);
+    /* 한글은 낱자로 끊지 않는다. 아주 긴 한 덩어리만 어쩔 수 없이 끊는다. */
+    word-break: keep-all; overflow-wrap: break-word;
+    min-width: 54px; max-width: 300px;
+  }
+  table.표 th:last-child, table.표 td:last-child { border-right: none; }
+  table.표 th {
+    color: #f6efe8; font-weight: 650; background: var(--바탕3);
+    border-bottom: 1px solid var(--선2); white-space: nowrap;
+  }
+  table.표 tr:last-child td { border-bottom: none; }
+  table.표 td code.속코드 { white-space: nowrap; }
+
+  /* ── 사람이 시킨 말 ── */
+  .사람말 {
+    display: flex; gap: 8px; margin: 20px 0 16px;
+    padding: 9px 11px; border-radius: 10px;
+    background: var(--바탕3); border: 1px solid var(--선);
+  }
+  .사람말 .꺾 { flex: 0 0 auto; color: var(--강조); font-weight: 700; }
+  .사람말 .글 {
+    flex: 1 1 auto; min-width: 0; color: #f0eae3;
+    white-space: pre-wrap; word-break: break-word;
+  }
+
+  /* ── 작업 묶음 — 클로드 화면의 '생성된 파일 1개, 실행된 명령 3개 +106 −3 ›'. 접으면 한 줄, 누르면 줄이 펴진다 ── */
+  .작업묶음 {
+    margin: 6px 0 16px; border: 1px solid var(--선2); border-radius: 10px;
+    background: var(--바탕2); overflow: hidden; font-size: 12px;
+  }
+  .작업묶음.실패있음 { border-color: var(--나쁨); }
+  .작업머리 {
+    display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+    cursor: pointer; color: var(--흐린글);
+  }
+  .작업머리:hover { background: var(--바탕3); }
+  .작업요약 { flex: 0 1 auto; min-width: 0; color: #d6cfc7; }
+  .작업증감, .줄증감 {
+    flex: 0 0 auto; display: flex; gap: 3px; font: 10.5px ui-monospace, Menlo, Consolas, monospace;
+  }
+  .작업증감 .더함, .줄증감 .더함 { color: var(--좋음); background: #16301f; border-radius: 4px; padding: 0 5px; }
+  .작업증감 .뺌, .줄증감 .뺌 { color: var(--나쁨); background: #3a1c20; border-radius: 4px; padding: 0 5px; }
+  .작업실패 {
+    flex: 0 0 auto; color: var(--나쁨); border: 1px solid var(--나쁨); border-radius: 8px;
+    padding: 0 6px; font-size: 10.5px;
+  }
+  .작업화살 { margin-left: auto; flex: 0 0 auto; color: var(--아주흐린글); }
+  .작업목록 { border-top: 1px solid var(--선); }
+  .작업줄 { border-top: 1px solid var(--선); }
+  .작업줄:first-child { border-top: none; }
+  .작업줄머리 {
+    display: flex; align-items: baseline; gap: 7px; padding: 6px 10px; cursor: pointer; color: var(--흐린글);
+  }
+  .작업줄머리:hover { background: var(--바탕3); }
+  .작업줄 .줄라벨 { flex: 0 0 auto; color: var(--흐린글); }
+  .작업줄 .줄대상 {
+    flex: 0 1 auto; min-width: 0; color: #e3ddd5; font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .작업줄 .줄꼬리 {
+    flex: 1 1 auto; min-width: 0; color: var(--아주흐린글); font-size: 11px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .작업줄 .줄화살 { margin-left: auto; flex: 0 0 auto; color: var(--아주흐린글); }
+  .작업줄.말 .줄대상 { flex: 1 1 auto; font-weight: 400; color: var(--흐린글); }
+  .작업줄.말.펴짐 .줄대상 { white-space: pre-wrap; overflow: visible; }
+  .작업줄.나쁨 .줄라벨, .작업줄.나쁨 .줄꼬리, .작업줄.나쁨 .줄대상 { color: var(--나쁨); }
+  .줄세부 { padding: 2px 10px 8px 24px; font-size: 11px; color: var(--흐린글); }
+  .줄세부 .세부글 { white-space: pre-wrap; word-break: break-word; font: 11px/1.5 ui-monospace, Menlo, Consolas, monospace; }
+  .줄세부 .세부글.탈 { color: var(--나쁨); }
+  .줄세부 .차이줄 { white-space: pre-wrap; font: 11px/1.5 ui-monospace, Menlo, Consolas, monospace; }
+  .줄세부 .차이줄.더함 { color: var(--좋음); }
+  .줄세부 .차이줄.뺌 { color: var(--나쁨); }
+  .줄세부 .차이줄.자리 { color: var(--아주흐린글); }
+  .줄세부 .세부귀띔 { margin-top: 3px; color: var(--기다림); }
+
+  /* ── 도구 한 줄 (클로드의 ⏺ 줄) ── */
+  .도구묶음 { margin: 9px 0; }
+  .도구줄 {
+    display: flex; align-items: baseline; gap: 7px;
+    padding: 2px 4px 2px 0; border-radius: 6px; cursor: pointer;
+    font-size: 12px;
+  }
+  .도구줄:hover { background: var(--바탕3); }
+  .도구줄 .알 { flex: 0 0 auto; color: var(--좋음); font-size: 9px; line-height: 1.7; }
+  .도구줄.나쁨 .알 { color: var(--나쁨); }
+  .도구줄 .이름 { flex: 0 0 auto; color: #e3ddd5; font-weight: 600; }
+  .도구줄 .대상 {
+    flex: 1 1 auto; min-width: 0; color: #9fb0ba;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font: 11px ui-monospace, Menlo, Consolas, monospace;
+  }
+  .도구줄 .꼬리 {
+    flex: 0 0 auto; color: var(--아주흐린글);
+    font: 11px ui-monospace, Menlo, Consolas, monospace;
+  }
+  .도구줄 .꼬리.더함 { color: var(--좋음); }
+  .도구줄 .꼬리.뺌 { color: var(--나쁨); }
+  .도구줄 .때 { flex: 0 0 auto; color: var(--아주흐린글); font-size: 10px; }
+
+  /* ⎿ 결과. 눌러야 펴진다. */
+  .결과 {
+    display: flex; gap: 6px; margin: 1px 0 0 3px;
+    padding-left: 2px; font-size: 11px;
+  }
+  .결과 .갈고리 { flex: 0 0 auto; color: var(--아주흐린글); line-height: 1.6; }
+  .결과 .속 {
+    flex: 1 1 auto; min-width: 0; overflow-x: auto;
+    color: #b8b1a8; white-space: pre;
+    font: 11px/1.6 ui-monospace, Menlo, Consolas, monospace;
+  }
+  .결과 .속.접힘 { white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+  .결과.탈 .속 { color: var(--나쁨); white-space: pre-wrap; }
+  .더보기 {
+    margin: 2px 0 0 22px; color: var(--아주흐린글); font-size: 10.5px;
+    cursor: pointer;
+  }
+  .더보기:hover { color: var(--글); }
+
+  /* diff — 더한 줄은 초록, 뺀 줄은 빨강 */
+  .차이 { margin: 3px 0 0 20px; border-left: 2px solid var(--선2); }
+  .차이 .줄 {
+    padding: 0 8px; white-space: pre; overflow-x: auto;
+    font: 11px/1.65 ui-monospace, Menlo, Consolas, monospace;
+    color: #9b948b;
+  }
+  .차이 .줄.더함 { background: #1c2f23; color: #a8dcbd; }
+  .차이 .줄.뺌 { background: #33201d; color: #e0a196; }
+  .차이 .줄.자리 { color: var(--아주흐린글); background: transparent; }
+
+  /* ── 할 일 (클로드의 체크리스트) ── */
+  .할일칸 {
+    border: 1px solid var(--선2); border-radius: 10px;
+    background: var(--바탕2); padding: 9px 11px; margin: 14px 0;
+  }
+  .할일머리 {
+    display: flex; align-items: center; gap: 7px;
+    color: var(--흐린글); font-size: 10.5px; font-weight: 650;
+    letter-spacing: .3px; text-transform: uppercase; margin-bottom: 7px;
+  }
+  .할일머리 .몇 { color: var(--아주흐린글); font-weight: 400; letter-spacing: 0;
+    text-transform: none; }
+  .할일 {
+    display: flex; gap: 8px; padding: 2px 0; font-size: 12px; line-height: 1.6;
+  }
+  .할일 .네모 { flex: 0 0 auto; color: var(--아주흐린글); }
+  .할일 .글 { flex: 1 1 auto; min-width: 0; word-break: break-word; }
+  .할일쪽지 {
+    margin: 0 0 3px 22px; color: var(--아주흐린글); font-size: 11px; line-height: 1.55;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: pointer;
+  }
+  .할일쪽지:hover { color: var(--흐린글); }
+  .할일쪽지.펴짐 { white-space: pre-wrap; word-break: break-word; max-height: 260px; overflow-y: auto; }
+  .할일.끝 .네모 { color: var(--좋음); }
+  .할일.끝 .글 { color: var(--아주흐린글); text-decoration: line-through; }
+  .할일.지금 .네모 { color: var(--강조); }
+  .할일.지금 .글 { color: #f0c4ae; font-weight: 600; }
+
+  /* ── 예약 (배추) ── */
+  .예약줄 { display: flex; align-items: center; gap: 8px; padding: 2px 0; font-size: 12px; }
+  .예약줄 .글 { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .예약알림 {
+    margin: 12px 0; padding: 6px 10px; border-left: 2px solid var(--강조);
+    color: var(--흐린글); font-size: 11.5px; white-space: pre-wrap; word-break: break-word;
+  }
+
+  /* ── 변경 요약 카드 ── */
+  .요약카드 {
+    border: 1px solid var(--선2); border-radius: 10px; margin: 10px 0;
+    overflow: hidden; background: var(--바탕2);
+  }
+  .요약머리 {
+    padding: 7px 11px; background: var(--바탕3); font-weight: 650; font-size: 12px;
+  }
+  .요약줄 {
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 11px; border-top: 1px solid var(--선); font-size: 11.5px;
+  }
+  .요약밭 {
+    flex: 1 1 auto; min-width: 0; color: #c3bdb4;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl;
+    font: 11px ui-monospace, Menlo, Consolas, monospace;
+  }
+  .요약증감 { flex: 0 0 auto; display: flex; gap: 6px;
+    font: 11px ui-monospace, Menlo, Consolas, monospace; }
+  .요약증감 .더함 { color: var(--좋음); }
+  .요약증감 .뺌 { color: var(--나쁨); }
+
+  /* 길잡이가 얹어 주는 한 마디 */
+  .귀띔 {
+    margin: 3px 0 0 20px; color: var(--기다림); font-size: 11px; line-height: 1.5;
+    white-space: pre-wrap; word-break: break-word;
+  }
+
+  /* ── 일하는 중 표시 (클로드의 도는 표시 자리) ── */
+  #상태줄 .돎 {
+    display: inline-block; color: var(--강조); margin-right: 5px;
+    animation: 돌기 1s steps(8) infinite;
+  }
+  @keyframes 돌기 { to { transform: rotate(360deg); } }
+  #상태줄 .잰것 { color: var(--아주흐린글); }
+  #상태줄 .서버꺼짐 { color: var(--나쁨); font-weight: 650; }
+  #상태줄 .다시보내기 { margin-left: 8px; padding: 1px 8px; font-size: 11px; }
+
+  /* ── 물음 ── */
+  #물음칸 { flex: 0 0 auto; padding: 0 11px; }
+  #물음칸:not(:empty) { padding: 4px 11px 8px; }
+  .물음 { border-radius: 9px; padding: 9px 11px; margin-bottom: 7px; font-size: 12px; }
+  .물음.쓰기 { background: #3a2f16; border: 1px solid #7a6220; color: #e8c98a; }
+  .물음.받기 { background: #3a1f1f; border: 1px solid #8a3a3a; color: #e8a89a; }
+  .물음.승인 { background: #1f2a3a; border: 1px solid #3a6a9a; color: #cfe0f2; }
+  .물음.승인.위험 { background: #3a2a1f; border: 1px solid #b0782a; color: #f0cf9a; }
+  .물음 .줄 button.거부 { color: #e8a89a; }
+  .물음.눈, .물음.손 { background: #1f2a3a; border: 1px solid #3a6a9a; color: #a9cbe8; }
+  .물음.손 { background: #3a2a1f; border: 1px solid #b0782a; color: #f0cf9a; }
+  .물음 .경고 { color: #e8b87a; font-size: 11.5px; line-height: 1.5; margin-top: 4px; }
+  #허가중칸 { flex: 0 0 auto; padding: 0 11px; }
+  #허가중칸:not(:empty) { padding: 2px 11px 6px; }
+  .허가중 { display: flex; align-items: center; gap: 8px; border-radius: 8px; padding: 5px 9px; margin-bottom: 4px;
+            font-size: 11.5px; background: #1b2b22; border: 1px solid #3f7a55; color: #a8e0bd; }
+  .허가중.손 { background: #33261b; border-color: #b0782a; color: #f0cf9a; }
+  .허가중 .뜻 { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .허가중 button { flex: 0 0 auto; }
+  .물음 .줄 { display: flex; gap: 6px; margin-top: 7px; }
+  .물음 code {
+    display: block; background: #17120f; color: #b9c7cf; border-radius: 5px;
+    padding: 4px 6px; margin: 5px 0; word-break: break-all;
+    font: 11px ui-monospace, Menlo, Consolas, monospace;
+  }
+  button.작은 {
+    flex: 1; border: 1px solid var(--선2); border-radius: 7px; background: var(--바탕3);
+    color: var(--글); padding: 5px 8px; cursor: pointer; font: inherit; font-size: 12px;
+  }
+  button.작은:hover { border-color: var(--강조테두리); }
+
+  /* ── 고르기 (GPT가 선택지를 내면 여기서 고른다. 클로드의 물음 카드 자리) ── */
+  #고르기칸 { flex: 0 0 auto; padding: 0 10px; max-height: 55%; overflow-y: auto; }
+  #고르기칸:empty { display: none; }
+  .고르기 {
+    border: 1px solid var(--강조테두리); border-radius: 10px; background: var(--바탕2);
+    padding: 9px 11px; margin-bottom: 7px; font-size: 12.5px;
+  }
+  .고르기 .머리 {
+    display: flex; align-items: center; gap: 6px;
+    color: var(--흐린글); font-size: 11px; font-weight: 650;
+  }
+  .고르기 .머리 .벌림 { flex: 1 1 auto; }
+  .고르기 .닫기 { cursor: pointer; color: var(--아주흐린글); padding: 0 3px; }
+  .고르기 .닫기:hover { color: var(--글); }
+  .고르기 .질문 { font-weight: 700; margin: 9px 0 5px; line-height: 1.5; word-break: break-word; }
+  .고를것 {
+    display: flex; gap: 8px; align-items: flex-start; padding: 5px 7px; margin: 2px 0;
+    border: 1px solid transparent; border-radius: 7px; cursor: pointer; line-height: 1.5;
+  }
+  .고를것:hover { background: var(--바탕3); }
+  .고를것.고름 { border-color: var(--강조테두리); background: var(--강조바탕); }
+  .고를것 .네모 { flex: 0 0 auto; color: var(--아주흐린글); }
+  .고를것.고름 .네모 { color: var(--강조); }
+  .고를것 .속 { flex: 1 1 auto; min-width: 0; word-break: break-word; }
+  .고를것 .이름 { font-weight: 600; }
+  .고를것 .설명 { color: var(--흐린글); font-size: 11.5px; }
+  .고를것 .추천표 { color: var(--강조); font-size: 11px; font-weight: 650; }
+  /* 선택지 상세 — 하면 · 좋은 점 · 걱정 · 시간: 카드만 읽어도 고를 수 있게 */
+  .고를것 .상세 { margin-top: 2px; color: var(--흐린글); font-size: 11.5px; line-height: 1.5; }
+  .고를것 .상세 .라벨 {
+    display: inline-block; min-width: 3.4em; margin-right: 5px; padding: 0 5px; border-radius: 4px;
+    background: var(--바탕4); color: var(--글); font-size: 10.5px; font-weight: 650; text-align: center;
+  }
+  .고를것 .상세.좋음 .라벨 { color: var(--좋음); }
+  .고를것 .상세.걱정 .라벨 { color: var(--나쁨); }
+  .고르기 .배경 {
+    margin: 0 0 6px; padding: 6px 9px; border-left: 3px solid var(--선2); border-radius: 0 6px 6px 0;
+    background: var(--바탕3); color: var(--흐린글); font-size: 11.8px; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
+  }
+  .고르기 .추천 {
+    margin: 0 0 6px; padding: 6px 9px; border: 1px solid var(--강조테두리); border-radius: 7px;
+    background: var(--강조바탕); color: var(--글); font-size: 12px; line-height: 1.5; word-break: break-word;
+  }
+  .고르기 input.기타 {
+    width: 100%; box-sizing: border-box; margin-top: 4px; padding: 5px 8px;
+    border: 1px solid var(--선2); border-radius: 7px; background: var(--바탕3);
+    color: var(--글); font: inherit; font-size: 12px; outline: none;
+  }
+  .고르기 input.기타:focus { border-color: var(--강조테두리); }
+  .고르기 .줄 { display: flex; gap: 8px; align-items: center; margin-top: 9px; }
+  .고르기 .줄 .몇 { flex: 1 1 auto; color: var(--아주흐린글); font-size: 11px; }
+  .고르기 .줄 button.작은 { flex: 0 0 auto; padding: 5px 16px; }
+  .고르기 .줄 button.작은:disabled { opacity: .45; cursor: default; }
+  .고르기 .줄 button.작은.자세히 { background: transparent; color: var(--흐린글); }
+
+  .알약 {
+    border: 1px solid var(--선2); border-radius: 7px; background: var(--바탕);
+    color: var(--흐린글); padding: 3px 9px; cursor: pointer;
+    font: inherit; font-size: 11.5px; white-space: nowrap;
+  }
+  .알약:hover { border-color: var(--강조테두리); color: var(--글); }
+  .알약.전부 { background: var(--강조바탕); border-color: var(--강조테두리); color: #f0c4ae; }
+
+  /* ── 아래 바 ──
+     클로드 코드 입력줄과 같은 꼴. 다만 우리는 여기서 대화를 하지 않으므로
+     글 쓰는 칸은 두지 않고, 조종하는 것만 한 줄로 늘어놓는다. */
+  #아래바 {
+    flex: 0 0 auto; display: flex; align-items: center; gap: 2px;
+    padding: 7px 10px 9px; border-top: 1px solid var(--선);
+  }
+  #아래바 .벌림 { flex: 1 1 auto; }
+
+  /* 글자처럼 생긴 단추. 테두리 없이 흐리게 두고 누를 때만 밝아진다. */
+  .민단추 {
+    border: none; background: transparent; color: var(--흐린글);
+    padding: 4px 7px; border-radius: 7px; cursor: pointer;
+    font: inherit; font-size: 12px; white-space: nowrap;
+    display: flex; align-items: center; gap: 4px;
+  }
+  .민단추:hover { background: var(--바탕4); color: var(--글); }
+  .민단추 .꺾쇠 { color: var(--아주흐린글); font-size: 9px; }
+  .민단추.수동 { color: var(--기다림); }
+  .민단추.전체권한 { color: var(--나쁨, #e8a89a); }
+
+  /* 창을 덮어도 일꾼이 계속 도는지 한눈에 (수치줄 안) */
+  #심장.좋음 { color: var(--좋음); }
+  #심장.나쁨 { color: var(--나쁨); }
+  /* 얼마나 했나. 횟수 상한을 없앤 대신 여기로 보고 사람이 끊는다. */
+  #해낸것.도는중 { color: var(--기다림); }
+
+  /* ── 시키는 칸 (클로드 입력 상자) ── */
+  #시킴칸 { flex: 0 0 auto; padding: 0 10px; }
+  #줄선것 {
+    display: none; padding: 5px 4px 3px; font-size: 11px; color: var(--기다림);
+  }
+  #줄선것:not(:empty) { display: block; }
+  #줄선것 .줄 {
+    display: flex; gap: 6px; padding: 2px 0;
+  }
+  #줄선것 .줄 .빼기 { cursor: pointer; color: var(--아주흐린글); flex: 0 0 auto; }
+  #줄선것 .줄 .빼기:hover { color: var(--나쁨); }
+  #줄선것 .줄 .글 {
+    flex: 1 1 auto; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #상자 {
+    display: flex; align-items: flex-start; gap: 7px;
+    border: 1px solid var(--선2); border-radius: 11px;
+    background: var(--바탕2); padding: 8px 10px;
+  }
+  #상자:focus-within { border-color: var(--강조테두리); }
+  #상자 .꺾 { flex: 0 0 auto; color: var(--강조); line-height: 1.5; }
+  #시킴글 {
+    flex: 1 1 auto; min-width: 0; resize: none; overflow-y: auto;
+    max-height: 140px; border: none; outline: none; background: transparent;
+    color: var(--글); font: inherit; font-size: 13px; line-height: 1.5;
+    padding: 0;
+  }
+  #시킴글::placeholder { color: var(--아주흐린글); }
+  #보냄단추 {
+    flex: 0 0 auto; width: 24px; height: 24px; border-radius: 50%;
+    border: none; background: var(--선2); color: var(--흐린글);
+    cursor: pointer; font-size: 12px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #보냄단추.쓸수있음 { background: var(--글); color: #1c1a17; }
+  #보냄단추.쓸수있음:hover { background: #fff; }
+
+  .동그라미 {
+    flex: 0 0 auto; height: 26px; padding: 0 11px; border-radius: 13px;
+    border: none; background: var(--글); color: #1c1a17;
+    cursor: pointer; font-size: 12px; line-height: 1; white-space: nowrap;
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    margin-right: 6px;
+  }
+  .동그라미:hover { background: #fff; }
+  .동그라미.멈춤 {
+    background: transparent; border: 1px solid var(--선2); color: var(--흐린글);
+  }
+  .동그라미.멈춤:hover { border-color: var(--강조테두리); color: var(--글); }
+
+  /* ── 가운데 : 왼쪽은 하는 일, 오른쪽은 일할 곳 ──
+     서랍처럼 덮지 않고 옆에 붙어 있어서 일하면서 늘 보인다. */
+  #가운데 { flex: 1 1 auto; display: flex; min-height: 0; }
+
+  #위칸 {
+    flex: 0 0 auto; display: flex; flex-direction: column;
+    width: 35%; min-width: 0; overflow: hidden; gap: 5px; padding: 6px;
+    border-left: 1px solid var(--선); background: var(--바탕2);
+  }
+  #기록칸 {
+    flex: 1 1 0; min-height: 60px; overflow: hidden;
+    border: 1px solid var(--선); border-radius: 8px; background: var(--바탕);
+  }
+  #기록칸 #도구기록 {
+    height: 100%; min-width: 0; overflow: auto; scrollbar-gutter: stable;
+    padding: 0 8px 8px;
+  }
+  #기록칸.숨김, #나무칸.숨김, #파일칸.숨김, #현황칸.숨김,
+  #현황가름대.숨김, #기록나무가름대.숨김, #세로가름대.숨김 { display: none; }
+  #위칸.접힘 { display: none; }
+  /* 켜 둔 칸이 하나도 없으면 오른쪽 전체를 치워 대화가 넓어진다 */
+  #위칸.칸없음, #가름대.칸없음 { display: none; }
+  /* 머리 글자와 단추를 오른쪽에 붙인다 */
+  #위칸머리 {
+    flex: 0 0 auto; display: flex; align-items: center; gap: 4px;
+    padding: 5px 8px 4px 11px;
+  }
+  #위칸머리 .이름 {
+    color: var(--흐린글); font-size: 10.5px; font-weight: 650;
+    letter-spacing: .3px; text-transform: uppercase;
+  }
+  #위칸머리 .벌림 { flex: 1 1 auto; }
+  #위칸머리 .아이콘 { width: 22px; height: 22px; font-size: 12px; }
+
+  #가름대 {
+    flex: 0 0 auto; width: 5px; cursor: col-resize; background: transparent;
+  }
+  #가름대:hover { background: var(--강조바탕); }
+  #가름대.접힘 { display: none; }
+
+  #아래칸 {
+    flex: 1 1 auto; display: flex; flex-direction: column;
+    min-height: 0; min-width: 0;
+  }
+
+  /* 위칸은 위아래 두 칸으로 나뉜다 — 일할 곳 / 파일.
+     사이의 가름대를 끌어 높이를 바꾼다. */
+  #나무칸 {
+    flex: 1 1 0; display: flex; flex-direction: column;
+    min-height: 60px; height: auto; overflow: hidden;
+    border: 1px solid var(--선); border-radius: 8px; background: var(--바탕);
+  }
+  #나무 { flex: 1 1 auto; overflow-y: auto; min-height: 0; padding: 0 8px 6px; }
+
+  #현황가름대, #기록나무가름대, #세로가름대 {
+    flex: 0 0 5px; height: 5px; cursor: row-resize; background: transparent;
+    border: none; border-radius: 4px;
+  }
+  #현황가름대:hover, #기록나무가름대:hover, #세로가름대:hover { background: var(--강조바탕); }
+
+  #파일칸 {
+    flex: 1 1 auto; display: flex; flex-direction: column;
+    min-height: 0; overflow: hidden;
+    border: 1px solid var(--선); border-radius: 8px; background: var(--바탕);
+  }
+  #파일머리 {
+    flex: 0 0 auto; display: flex; align-items: center; gap: 2px;
+    padding: 4px 4px 3px 4px; border-bottom: 1px solid #302c28;
+  }
+  #파일머리 .아이콘 { width: 22px; height: 22px; font-size: 12px; }
+  #파일칸이름 {
+    color: var(--흐린글); font-size: 10.5px; font-weight: 650;
+    letter-spacing: .3px; text-transform: uppercase; padding: 0 6px;
+  }
+
+  /* 열린 파일 탭 */
+  #탭줄 {
+    flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 2px;
+    overflow-x: auto; scrollbar-width: none;
+  }
+  #탭줄::-webkit-scrollbar { display: none; }
+  .탭 {
+    flex: 0 0 auto; display: flex; align-items: center; gap: 5px;
+    max-width: 150px; padding: 3px 5px 3px 8px; border-radius: 6px;
+    color: var(--흐린글); font-size: 11.5px; cursor: pointer; white-space: nowrap;
+  }
+  .탭:hover { background: var(--바탕3); color: var(--글); }
+  .탭.지금 { background: var(--바탕4); color: var(--글); }
+  .탭 .이름 { overflow: hidden; text-overflow: ellipsis; }
+  .탭 .닫기 {
+    flex: 0 0 auto; width: 14px; height: 14px; border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; color: var(--아주흐린글);
+  }
+  .탭 .닫기:hover { background: var(--선2); color: var(--글); }
+
+  /* 나무 | 내용 */
+  #보기몸 { flex: 1 1 auto; display: flex; min-height: 0; }
+  #나무쪽 {
+    flex: 1 1 auto; display: flex; flex-direction: column;
+    min-width: 0; min-height: 0; padding-top: 5px;
+  }
+  #파일칸.보는중 #나무쪽 { flex: 0 0 auto; width: 170px; }
+  #파일칸.나무접힘 #나무쪽, #파일칸.나무접힘 #보기가름대 { display: none; }
+  #보기가름대 {
+    display: none; flex: 0 0 auto; width: 5px; cursor: col-resize;
+    border-left: 1px solid #302c28;
+  }
+  #보기가름대:hover { background: var(--강조바탕); }
+  #파일칸.보는중 #보기가름대 { display: block; }
+  #나무쪽토글 { display: none; }
+  #파일칸.보는중 #나무쪽토글 { display: block; }
+  #파일칸.나무접힘 #나무쪽토글 { background: var(--강조바탕); color: #f0c4ae; }
+
+  #보기쪽 { display: none; flex: 1 1 auto; flex-direction: column; min-width: 0; min-height: 0; }
+  #파일칸.보는중 #보기쪽 { display: flex; }
+  #보기길 {
+    flex: 0 0 auto; display: flex; align-items: center; gap: 4px;
+    padding: 4px 4px 4px 12px;
+  }
+  #빵부스러기 {
+    flex: 1 1 auto; min-width: 0; color: var(--아주흐린글); font-size: 11px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #빵부스러기 .끝 { color: var(--흐린글); }
+  #원본토글 { width: 26px; height: 22px; font: 10px ui-monospace, Menlo, Consolas, monospace; }
+  #원본토글.켬 { background: var(--강조바탕); color: #f0c4ae; }
+  #원본토글[hidden] { display: none; }
+  #보기속 {
+    flex: 1 1 auto; min-width: 0; overflow: auto; scrollbar-gutter: stable;
+    min-height: 0; padding: 0 14px 16px;
+  }
+  #보기속 .답 { font-size: 13px; }
+
+  /* 원본 — 줄 번호와 함께 */
+  .원본 {
+    display: grid; grid-template-columns: auto 1fr; column-gap: 12px;
+    font: 11.5px/1.6 ui-monospace, Menlo, Consolas, monospace;
+    margin-left: -6px;
+  }
+  .원본 .번 { color: #5d574f; text-align: right; user-select: none; padding-left: 4px; }
+  .원본 .줄 { color: #cfc8c0; white-space: pre; }
+  .보기끝 {
+    display: flex; align-items: center; gap: 8px; margin-top: 10px;
+    color: var(--아주흐린글); font-size: 11px;
+  }
+  .보기틀림 { color: var(--나쁨); font-size: 12px; padding: 14px 0; white-space: pre-wrap; }
+
+  /* 크게 보기 — 파일 칸이 판 전체를 쓴다 */
+  #틀.보기크게 #아래칸, #틀.보기크게 #가름대,
+  #틀.보기크게 #나무칸, #틀.보기크게 #세로가름대,
+  #틀.보기크게 #시킴칸 { display: none; }
+  #틀.보기크게 #위칸 { width: 100% !important; flex: 1 1 auto; border-left: none; }
+  #틀.보기크게 #보기크게 { background: var(--강조바탕); color: #f0c4ae; }
+
+  /* 파일 거르개 */
+  #거르개칸 {
+    flex: 0 0 auto; display: flex; align-items: center; gap: 4px;
+    margin: 0 8px 5px; padding: 3px 7px;
+    border: 1px solid var(--선); border-radius: 7px; background: var(--바탕);
+  }
+  #거르개칸:focus-within { border-color: var(--강조테두리); }
+  #거르개 {
+    flex: 1 1 auto; min-width: 0; border: none; outline: none;
+    background: transparent; color: var(--글); font: inherit; font-size: 11.5px;
+    padding: 1px 0;
+  }
+  #거르개::placeholder { color: var(--아주흐린글); }
+  #거르개지우기 {
+    flex: 0 0 auto; color: var(--아주흐린글); cursor: pointer;
+    font-size: 10px; padding: 0 2px; visibility: hidden;
+  }
+  #거르개지우기:hover { color: var(--글); }
+  #거르개칸.찼음 #거르개지우기 { visibility: visible; }
+
+  #파일나무 { flex: 1 1 auto; overflow-y: auto; min-height: 0; padding: 0 6px 6px; }
+
+  /* 고른 파일이 없을 때 */
+  .빈파일칸 {
+    display: flex; flex-direction: column; align-items: center; gap: 7px;
+    padding: 26px 16px; text-align: center; color: var(--아주흐린글);
+  }
+  .빈파일칸 .큰딱지 { font-size: 22px; opacity: .55; }
+  .빈파일칸 .글 { font-size: 11px; line-height: 1.6; }
+  .빈파일칸 .굵게 { color: var(--흐린글); font-size: 12px; font-weight: 650; }
+
+  /* ── 파일 나무 (VS Code 탐색기 꼴) ── */
+  .뿌리이름 > span:first-child { flex: 0 0 auto; white-space: nowrap; }
+  .뿌리이름 {
+    display: flex; align-items: center; gap: 5px;
+    padding: 5px 4px 4px; margin-top: 4px;
+    color: var(--흐린글); font-size: 10.5px; font-weight: 650;
+    letter-spacing: .3px; text-transform: uppercase;
+  }
+  .뿌리이름 .밭글 {
+    flex: 1 1 auto; min-width: 0; font-weight: 400; text-transform: none;
+    letter-spacing: 0; color: var(--아주흐린글);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font: 10.5px ui-monospace, Menlo, Consolas, monospace;
+  }
+  .칸줄 {
+    display: flex; align-items: center; gap: 4px;
+    padding: 2px 4px; border-radius: 5px; cursor: default;
+    font-size: 12px; color: #cfc8c0; white-space: nowrap;
+  }
+  .칸줄:hover { background: var(--바탕3); }
+  .칸줄.고름 { background: var(--바탕4); }
+  .칸줄.고름 .글자 { color: #f0c4ae; }
+  .칸줄 .꺾쇠 {
+    flex: 0 0 11px; color: var(--아주흐린글); font-size: 9px; text-align: center;
+  }
+  .칸줄 .딱지 {
+    flex: 0 0 15px; text-align: center; color: var(--아주흐린글);
+    font: 10px ui-monospace, Menlo, Consolas, monospace;
+  }
+  .칸줄 .딱지.코드 { color: #8fb3c9; }
+  .칸줄 .딱지.글월 { color: #b3a98f; }
+  .칸줄 .딱지.그림 { color: #b08fc9; }
+  .칸줄 .글자 {
+    flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  }
+  .칸줄.칸 .글자 { color: #e3ddd5; }
+  .칸줄 .크기 { flex: 0 0 auto; color: var(--아주흐린글); font-size: 10px; }
+  .속칸 { margin-left: 9px; border-left: 1px solid #332f2b; padding-left: 3px; }
+  .나무빔 { color: var(--아주흐린글); font-size: 11.5px; padding: 4px 6px; }
+  #사이드발 {
+    flex: 0 0 auto; padding: 8px 12px; border-top: 1px solid var(--선);
+    color: var(--아주흐린글); font-size: 11.5px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* 일할 곳 목록 — 클로드 사이드바 꼴.
+     폴더 이름은 흐린 머리글, 그 밑에 대화들이 ○ 로 늘어선다.
+     고른 대화는 주황이 아니라 밝은 회색 띠로 표시한다. */
+  .폴더 {
+    display: flex; align-items: center; gap: 2px; margin-top: 14px;
+    padding: 2px 4px 3px 8px;
+    color: var(--아주흐린글); font-size: 11.5px; font-weight: 400;
+  }
+  #나무 > .폴더:first-child { margin-top: 4px; }
+  .폴더 .이름 { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .폴더 .늘보임 { visibility: visible; font-size: 13px; }
+  .방 {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 6px 5px 10px; border-radius: 7px; cursor: pointer;
+    color: #d3cec7; font-size: 12.5px;
+  }
+  .방:hover { background: #2b2927; }
+  .방.지금 { background: #353330; color: #f3efea; }
+  .방 .알 {
+    flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%;
+    border: 1.3px solid #7d776f;
+  }
+  .방.지금 .알 { border-color: #cfc9c1; }
+  .방 .이름 { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* ── 실행 현황 — 서버가 직접 잰 값. GPT의 말이 아니다 ── */
+  /* 아래 padding 은 카드 테두리(달리는 일의 주황 · 실패의 빨강) 맨 아랫줄이 스크롤 끝에서 잘리지 않게 한다 */
+  #현황칸 {
+    flex: 0 1 auto; max-height: 42%; overflow-y: auto; min-height: 40px;
+    display: flex; flex-direction: column; gap: 6px; padding-bottom: 3px;
+  }
+  #현황칸[hidden] { display: none; }
+  #현황칸 .머리글 {
+    display: flex; align-items: center; gap: 6px; padding: 2px 4px 0 6px;
+    color: var(--흐린글); font-size: 10.5px; font-weight: 650; letter-spacing: .3px;
+  }
+  #현황칸 .머리글 .이름 { flex: 1 1 auto; }
+  .현황판 {
+    flex: 0 0 auto; border: 1px solid var(--선); border-radius: 9px; background: var(--바탕);
+    padding: 7px 9px; font-size: 11.5px; line-height: 1.5;
+  }
+  .현황판.달리는중 { border-color: var(--강조테두리); }
+  .현황판.실패 { border-color: var(--나쁨); }
+  .현황판 .판머리 { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+  .현황판 .점 { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; background: var(--아주흐린글); }
+  .현황판.달리는중 .점 { background: var(--기다림); animation: 깜빡 1.4s ease-in-out infinite; }
+  .현황판.끝남 .점 { background: var(--좋음); }
+  .현황판.실패 .점 { background: var(--나쁨); }
+  @keyframes 깜빡 { 50% { opacity: .3; } }
+  /* 제목은 두 줄까지 보인다 — 좁은 칸에서 한 줄로 자르면 어느 일인지 알 수가 없었다 */
+  .현황판 .판이름 {
+    flex: 1 1 auto; min-width: 0; font-weight: 650; color: var(--글); word-break: break-word;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .현황판 .판단추 {
+    flex: 0 0 auto; cursor: pointer; color: var(--흐린글); padding: 0 5px; border-radius: 4px;
+  }
+  .현황판 .판단추:hover { background: var(--바탕4); color: var(--글); }
+  .현황판 .판단추.판멈춤 { color: var(--나쁨); }
+  .현황판 .상태글 { color: var(--흐린글); font-size: 10.5px; margin-top: 2px; word-break: break-word; }
+  .현황판 .줄항 { margin-top: 5px; word-break: break-word; }
+  .현황판 .줄항 .이름 { color: var(--흐린글); }
+  .현황판 .줄항 .값 { color: var(--글); }
+  .현황판 .줄항.없음 { color: var(--아주흐린글); }
+  .현황판 .경고 { color: var(--나쁨); }
+  /* 그래프는 제 줄에, 한 줄로(좁은 칸에서 꺾이면 뒤죽박죽이 된다) */
+  .현황판 .그래프 {
+    display: block; white-space: nowrap; overflow: hidden;
+    font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 10px; letter-spacing: 0;
+    color: var(--흐린글); line-height: 1.1;
+  }
+  .현황판 .옛줄 {
+    margin-top: 4px; padding: 4px 6px; border-radius: 6px; background: #17140f; color: #9fb0ba;
+    font: 10.5px ui-monospace, Menlo, Consolas, monospace; white-space: pre-wrap; word-break: break-all;
+  }
+  /* 작은 네모 칸 — 큰 틀(카드) 안에 이름·값·덧말·그래프가 든 네모를 격자로 */
+  .현황판 .네모틀 { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 5px; margin-top: 7px; }
+  .현황판 .네모 {
+    min-width: 0; padding: 4px 6px 5px; border: 1px solid var(--선); border-radius: 8px;
+    background: rgba(255,255,255,.03);
+  }
+  /* 그래프가 든 네모(숫자)는 한 줄을 다 쓴다 — 좁은 칸에서 그래프가 잘리지 않게 */
+  .현황판 .네모:has(.그래프) { grid-column: 1 / -1; }
+  .현황판 .네모 .네모이름 { display: block; color: var(--흐린글); font-size: 10.5px; word-break: keep-all; }
+  .현황판 .네모 .네모값 { display: block; color: var(--글); font-size: 14px; font-weight: 650; line-height: 1.3; overflow-wrap: anywhere; }
+  .현황판 .네모 .네모값.좋아짐 { color: var(--좋음); }
+  .현황판 .네모 .네모값.나빠짐 { color: var(--나쁨); }
+  .현황판 .네모 .네모덧 { display: block; color: var(--아주흐린글); font-size: 10px; line-height: 1.35; overflow-wrap: anywhere; }
+  .현황판 .네모 .그래프 { margin-top: 3px; }
+  .현황막대 { height: 5px; border-radius: 3px; background: var(--바탕4); overflow: hidden; margin: 4px 0 2px; }
+  .현황막대 > i { display: block; height: 100%; background: var(--기다림); border-radius: 3px; transition: width .6s; }
+  .현황판.끝남 .현황막대 > i { background: var(--좋음); }
+  .현황판.실패 .현황막대 > i { background: var(--나쁨); }
+  .현황막대.모름 > i { width: 35%; animation: 훑기 1.6s linear infinite; }
+  @keyframes 훑기 { from { margin-left: -35%; } to { margin-left: 100%; } }
+  .현황더 { color: var(--아주흐린글); font-size: 10.5px; padding: 0 6px; }
+
+  /* 방 목록 줄 옆의 작은 막대 — 그 방에서 도는 일이 있으면 */
+  /* 막대는 줄 아래쪽에 가늘게 깐다 — 옆에 두면 좁은 칸에서 방 이름이 '발…' 로 잘린다 */
+  .방 { position: relative; }
+  .방 .방현황 { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; }
+  .방 .방막대 {
+    position: absolute; left: 25px; right: 10px; bottom: 1px; height: 3px;
+    border-radius: 2px; background: var(--바탕4); overflow: hidden;
+  }
+  .방 .방막대 > i { display: block; height: 100%; background: var(--기다림); }
+  .방 .방막대.모름 > i { width: 40%; animation: 훑기 1.6s linear infinite; }
+  .방 .방실패 { color: var(--나쁨); font-size: 10px; }
+  .방 .알.돌아감 { background: var(--기다림); border-color: var(--기다림); animation: 깜빡 1.4s ease-in-out infinite; }
+
+  .작은아이콘 {
+    visibility: hidden; cursor: pointer; color: var(--흐린글);
+    padding: 0 5px; border-radius: 4px; flex: 0 0 auto;
+  }
+  .폴더:hover .작은아이콘, .방:hover .작은아이콘 { visibility: visible; }
+  .작은아이콘:hover { background: var(--바탕4); color: var(--글); }
+  .끌림 { background: #3a2a20 !important; outline: 1px dashed var(--강조테두리); }
+
+  /* ── 메뉴 ── */
+  #메뉴 {
+    position: fixed; z-index: 60; background: #2d2b28; border: 1px solid var(--선2);
+    border-radius: 10px; padding: 5px; box-shadow: 0 8px 24px rgba(0,0,0,.55);
+    min-width: 170px; display: none;
+  }
+  #메뉴 .줄 { padding: 7px 10px; border-radius: 7px; cursor: pointer; white-space: nowrap; }
+  #메뉴 .줄:hover { background: var(--바탕4); }
+  #메뉴 .선 { height: 1px; background: var(--선2); margin: 5px 4px; }
+  #메뉴 .쪽 { float: right; color: var(--아주흐린글); margin-left: 18px; }
+  /* 추론 수준 막대 (Claude 의 '노력' 칸과 같은 모양) */
+  #메뉴 .추론틀 { padding: 8px 10px 6px; min-width: 210px; }
+  #메뉴 .추론머리 { font-weight: 650; margin-bottom: 8px; }
+  #메뉴 .추론머리 .흐림 { color: var(--아주흐린글); font-weight: 400; margin-right: 6px; }
+  #메뉴 .추론끝 { display: flex; justify-content: space-between; color: var(--아주흐린글);
+    font-size: 11px; margin-bottom: 4px; }
+  #메뉴 .추론막대 { width: 100%; accent-color: var(--강조); cursor: pointer; }
+  #메뉴 .추론칸이름 { display: flex; justify-content: space-between; font-size: 11px; color: var(--흐린글); }
+
+  /* ── 덮는 창 (목표 / 설정) ── */
+  .덮는창 {
+    position: fixed; inset: 0; z-index: 70; display: none;
+    align-items: center; justify-content: center; padding: 18px;
+    background: rgba(0,0,0,.5);
+  }
+  .덮는창 .상자 {
+    width: 100%; max-height: 100%; display: flex; flex-direction: column;
+    background: var(--바탕); border: 1px solid var(--선2);
+    border-radius: 12px; overflow: hidden;
+  }
+  .덮는창 .머리 {
+    display: flex; align-items: center; gap: 6px; flex: 0 0 auto;
+    padding: 9px 7px 9px 13px; border-bottom: 1px solid var(--선); font-weight: 650;
+  }
+  .덮는창 .머리 .이름 { flex: 1 1 auto; }
+  .덮는창 .몸 { flex: 0 1 auto; overflow-y: auto; padding: 12px 14px; }
+
+  #목표제목 { color: #f0dcc8; font-weight: 700; margin: 2px 0 9px; }
+  /* ── 웹사이트 허용 카드 · 설정의 허용 목록 ── */
+  .물음.사이트 { background: #3a2a16; border: 1px solid #b0782a; color: #f0cf9a; }
+  .물음.사이트 .주소 { display: block; margin: 5px 0 3px; padding: 4px 6px; border-radius: 5px; background: #17120f;
+    color: #ffe2b0; font: 12px ui-monospace, Menlo, Consolas, monospace; word-break: break-all; }
+  .물음.사이트 .경고 { color: #e8b87a; font-size: 11.5px; line-height: 1.5; margin-top: 4px; }
+  .물음.사이트 .줄 button.작은 { flex: 1 1 auto; }
+  .물음.사이트 .줄 button.거부 { color: #e8a89a; }
+  .설정머리 { margin: 4px 0 6px; color: var(--흐린글); font-size: 11px; font-weight: 650; }
+  .설정머리:not(:first-child) { margin-top: 16px; }
+  .설정줄 { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--선); }
+  .설정줄 .출처 { flex: 1 1 auto; min-width: 0; word-break: break-all;
+    font: 12px ui-monospace, Menlo, Consolas, monospace; }
+  .설정줄 button.작은 { flex: 0 0 auto; padding: 3px 9px; font-size: 11.5px; }
+  .설정안내 { color: var(--아주흐린글); font-size: 11.5px; line-height: 1.5; margin-top: 10px; }
+  /* ── 목표 창 — 고치기 ── */
+  .목표줄 { display: flex; align-items: flex-start; gap: 7px; padding: 4px 0; }
+  .목표줄 .네모 { flex: 0 0 auto; cursor: pointer; color: var(--흐린글); width: 16px; text-align: center; }
+  .목표줄 .이름 { flex: 1 1 auto; min-width: 0; cursor: text; word-break: break-word; }
+  .목표줄.끝 .이름 { color: var(--아주흐린글); text-decoration: line-through; }
+  .목표줄.하는중 .이름 { font-weight: 700; color: var(--기다림); }
+  .목표줄.실패 .이름 { color: var(--나쁨); }
+  .목표줄 .도구 { flex: 0 0 auto; display: flex; gap: 2px; visibility: hidden; }
+  .목표줄:hover .도구 { visibility: visible; }
+  .도구단추 { cursor: pointer; color: var(--흐린글); padding: 0 4px; border-radius: 4px; font-size: 11px; }
+  .도구단추:hover { background: var(--바탕4); color: var(--글); }
+  .도구단추.끔 { opacity: .25; pointer-events: none; }
+  input.목표입력, textarea.목표입력 {
+    width: 100%; box-sizing: border-box; background: var(--바탕3); color: var(--글);
+    border: 1px solid var(--선2); border-radius: 7px; padding: 5px 8px; margin-top: 4px;
+    font: inherit; font-size: 12.5px; outline: none; resize: vertical;
+  }
+  .목표입력:focus { border-color: var(--강조테두리); }
+  .목표줄 .이름 input.목표입력 { margin-top: 0; }
+  .목표더하기 { margin-top: 6px; }
+  .목표제목줄 { display: flex; align-items: flex-start; gap: 6px; }
+  .목표제목줄 #목표제목 { flex: 1 1 auto; min-width: 0; cursor: text; word-break: break-word; }
+  .목표단추줄 { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 4px; }
+  .목표단추줄 button.작은 { flex: 0 0 auto; padding: 5px 11px; }
+  .목표단추줄 button.작은:disabled { opacity: .4; cursor: default; }
+  .목표폼칸 { margin-top: 8px; padding: 9px 10px; border: 1px solid var(--선2); border-radius: 9px; background: var(--바탕2); }
+  .목표폼칸 .안내 { color: var(--흐린글); font-size: 11.5px; margin-top: 4px; line-height: 1.5; }
+  .목표폼칸 .줄 { display: flex; gap: 6px; margin-top: 8px; }
+  .목표폼칸 .줄 button.작은 { flex: 0 0 auto; padding: 5px 14px; }
+  .지난목표머리 { margin: 14px 0 4px; color: var(--흐린글); font-size: 11px; font-weight: 650; }
+  .지난목표 { padding: 6px 0; border-top: 1px solid var(--선); }
+  .지난목표 .일 { font-weight: 650; word-break: break-word; }
+  .지난목표 .뜻 { color: var(--아주흐린글); font-size: 11px; }
+  .지난목표 .이유 { color: var(--흐린글); font-size: 11.5px; word-break: break-word; }
+  .지난목표 .줄 { display: flex; margin-top: 4px; }
+  .지난목표 .줄 button.작은 { flex: 0 0 auto; padding: 3px 10px; font-size: 11.5px; }
+  .할일머리 .할일고침 { margin-left: auto; color: var(--아주흐린글); cursor: pointer; padding: 0 5px; border-radius: 4px; }
+  .할일머리 .할일고침:hover { background: var(--바탕4); color: var(--글); }
+
+  /* GPT가 목표를 바꾸면 입력칸 위에 한 줄로 알리고, 마음에 안 들면 바로 되돌린다 */
+  #목표알림 { flex: 0 0 auto; padding: 0 10px 6px; }
+  #목표알림[hidden] { display: none; }
+  #목표알림 .알림줄 {
+    display: flex; align-items: center; gap: 8px; padding: 6px 10px; font-size: 11.5px; line-height: 1.5;
+    border: 1px solid var(--강조테두리); border-radius: 9px; background: var(--강조바탕);
+  }
+  #목표알림 .글 { flex: 1 1 auto; min-width: 0; word-break: break-word; }
+  #목표알림 button.작은 { flex: 0 0 auto; padding: 3px 10px; font-size: 11.5px; }
+  #목표알림 .닫기 { cursor: pointer; color: var(--흐린글); padding: 0 3px; }
+  .단계 { padding: 3px 0; }
+  .쪽지 { color: var(--아주흐린글); font-size: 11px; padding-left: 19px; }
+
+  .이름고침 {
+    width: 100%; background: #17140f; color: var(--글);
+    border: 1px solid var(--강조테두리); border-radius: 5px;
+    padding: 3px 6px; font: inherit; font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<div id="틀">
+  <div id="상단바">
+    <button class="아이콘" id="위칸토글" title="일할 곳 접기 · 펴기">▣</button>
+    <div id="제목">
+      <span id="방이름">일할 곳을 고르세요</span>
+      <span id="폴더이름" hidden></span>
+    </div>
+    <div id="파일도구" title="파일 보기 도구">
+      <button class="아이콘" id="나무쪽토글" title="파일 나무 접기 · 펴기">☰</button>
+      <button class="아이콘" id="파일새로고침" title="다시 읽기">⟳</button>
+      <button class="아이콘" id="보기크게" title="크게 보기 · 되돌리기">⤢</button>
+      <button class="아이콘" id="보기닫기" title="연 파일 모두 닫기">✕</button>
+    </div>
+    <button class="아이콘" id="메뉴단추" title="메뉴">⋮</button>
+  </div>
+
+  <div id="가운데">
+    <div id="아래칸">
+      <div id="상태줄">서버 확인 중…</div>
+      <div id="수치줄" hidden>
+        <span id="끝글"></span>
+        <span id="해낸것" title="이번 일을 얼마나 했는지"></span>
+        <span id="심장" title="창을 덮어도 계속 동작하는지 보는 표시">·</span>
+      </div>
+      <div id="물음칸"></div>
+      <div id="허가중칸"></div>
+      <div id="흐름">
+        <div id="본문"></div>
+      </div>
+    </div>
+
+    <div id="가름대" title="끌어서 너비 바꾸기"></div>
+
+    <div id="위칸">
+      <div id="현황칸" hidden></div>
+
+      <div id="현황가름대" title="끌어서 실행 현황 크기 바꾸기"></div>
+
+      <div id="나무칸" class="보기칸">
+        <div id="위칸머리">
+          <span class="이름">일할 곳</span>
+          <div class="벌림"></div>
+          <button class="아이콘" id="폴더고르기단추" title="일할 폴더 고르기">＋</button>
+        </div>
+        <div id="나무"></div>
+      </div>
+
+      <div id="기록나무가름대" class="보기칸" title="끌어서 일할 곳 크기 바꾸기"></div>
+
+      <div id="기록칸" class="보기칸">
+        <div id="도구기록"></div>
+      </div>
+
+      <div id="세로가름대" title="끌어서 실행 기록 크기 바꾸기"></div>
+
+      <!-- 파일 보기 — 클로드의 파일 창 꼴.
+           위: [☰ 나무 접기] [열린 파일 탭들] [⟳ ⋮ ⤢ ✕]
+           아래: 왼쪽 파일 나무 | 가름대 | 오른쪽 내용 -->
+      <div id="파일칸" class="보기칸">
+        <div id="파일머리">
+          <div id="탭줄"><span class="이름" id="파일칸이름">파일</span></div>
+        </div>
+
+        <div id="보기몸">
+          <div id="나무쪽">
+            <div id="거르개칸">
+              <input id="거르개" type="text" placeholder="파일 거르기…" spellcheck="false">
+              <span id="거르개지우기" title="지우기">✕</span>
+            </div>
+            <div id="파일나무"></div>
+          </div>
+
+          <div id="보기가름대" title="끌어서 나무 너비 바꾸기"></div>
+
+          <div id="보기쪽">
+            <div id="보기길">
+              <span id="빵부스러기"></span>
+              <button class="아이콘" id="원본토글" title="그린 것 · 원본 바꾸기">&lt;/&gt;</button>
+            </div>
+            <div id="보기속"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="고르기칸"></div>
+
+  <div id="목표알림" hidden></div>
+
+  <div id="시킴칸">
+    <div id="줄선것"></div>
+    <div id="상자">
+      <span class="꺾">&gt;</span>
+      <textarea id="시킴글" rows="1" placeholder="시킬 일을 적으세요"></textarea>
+      <button id="보냄단추" title="보내기">↑</button>
+    </div>
+  </div>
+
+  <div id="아래바">
+    <button id="멈춤단추" class="동그라미" title="일시정지 · 재개">⏸ 멈춤</button>
+    <button class="민단추" id="모드알약" title="권한 모드 — 누가 결정할지 정합니다">
+      <span id="모드글">자동</span><span class="꺾쇠">⌄</span>
+    </button>
+    <button class="민단추" id="더하기" title="일할 폴더 고르기">＋</button>
+    <button class="민단추" id="추론알약" title="ChatGPT 추론 수준 — 더 빠르게 ↔ 더 스마트하게">
+      <span id="추론글">추론 깊게</span><span class="꺾쇠">⌄</span>
+    </button>
+  </div>
+</div>
+
+<div id="메뉴"></div>
+
+<div class="덮는창" id="목표창">
+  <div class="상자">
+    <div class="머리">
+      <span class="이름">목표</span>
+      <button class="아이콘" id="목표닫기">×</button>
+    </div>
+    <div class="몸" id="목표몸"></div>
+  </div>
+</div>
+
+<div class="덮는창" id="설정창">
+  <div class="상자">
+    <div class="머리">
+      <span class="이름">설정</span>
+      <button class="아이콘" id="설정닫기">×</button>
+    </div>
+    <div class="몸" id="설정몸">아직 비어 있습니다.</div>
+  </div>
+</div>
+
+<script src="protocol.js"></script>
+<script src="parser.js"></script>
+<script src="panel.js"></script>
+</body>
+</html>
