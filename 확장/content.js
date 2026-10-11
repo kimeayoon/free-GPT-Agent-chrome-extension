@@ -156,6 +156,8 @@ function 상태보내기() {
     추론: 상태.지금추론 || '',
     추론단계들: 상태.추론단계들 || [],
     추론목표: 상태.추론목표,
+    ...(상태.지금모델 ? { 모델: 상태.지금모델 } : {}),       // 메뉴를 한 번 열어 봐야 안다 — 모르면 판이 기억해 둔 것을 쓴다
+    ...(상태.모델들 && 상태.모델들.length ? { 모델들: 상태.모델들 } : {}),
   });
 }
 
@@ -272,6 +274,11 @@ chrome.runtime.onMessage.addListener((메시지, 보낸이, 응답보내기) => 
       상태.추론목표 = 번;
       const 됨 = await 추론맞추기();
       응답보내기({ 됨, 추론: 상태.지금추론 || '', 추론단계들: 상태.추론단계들 || [] });
+
+    } else if (메시지.짓 === '모델목록' || 메시지.짓 === '모델바꾸기') {
+      // 판의 추론 창이 열릴 때(목록 읽기) · 거기서 모델을 고를 때. ChatGPT 가 고른 것을 기억하므로 따로 저장하지 않는다.
+      const 됨 = await 모델맞추기(메시지.짓 === '모델바꾸기' ? String(메시지.값 || '') : '');
+      응답보내기({ 됨, 모델: 상태.지금모델 || '', 모델들: 상태.모델들 || [], 추론: 상태.지금추론 || '' });
 
     } else if (메시지.짓 === '넘기기') {
       // 판의 [새 대화로 넘기기]. 페이지를 옮기므로 먼저 답한다.
@@ -560,10 +567,16 @@ const 추론목표열쇠 = '추론목표';        // 칸 번호. 없으면 가�
 const 추론이름열쇠 = '추론단계들';
 const 추론살핌ms = 1500;
 
+const 기본추론이름들 = ['Instant', 'Medium', 'High'];
+
 function 추론단추글() {
   const 단추 = 찾기(셀렉터.추론단추);
   const 글 = 단추 ? String(단추.innerText || 단추.textContent || '').trim() : '';
-  return 글 === '추론 수준' ? '' : 글;       // 메뉴가 열려 있는 동안엔 이 글자로 바뀐다
+  if (글 === '추론 수준') return '';         // 메뉴가 열려 있는 동안엔 이 글자로 바뀐다
+  // 기본 모델이 아니면 수준 앞에 모델이 붙는다('5.6 High'). 수준 이름만 남긴다 — 안 그러면 칸 이름과 안 맞아
+  // 볼 때마다 메뉴를 다시 연다. (2026-10-11 형님 Chrome 에서 GPT-5.6 Sol 을 골라 확인)
+  const 이름들 = (상태.추론단계들 || []).filter(Boolean).concat(기본추론이름들);
+  return 이름들.find((이름) => 글 === 이름 || 글.endsWith(' ' + 이름)) || 글;
 }
 
 function 추론막대값() {
@@ -630,14 +643,80 @@ async function 추론맞추기() {
       if (읽음) 단계들[읽음.값] = 읽음.이름 || 단계들[읽음.값];
     }
     const 맞음 = !!읽음 && 읽음.값 === 목표;
-    키누르기(document.activeElement || document.body, 'Escape');
-    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    await 잠깐(200);
+    모델적어두기(모델줄읽기());          // 메뉴가 열린 김에 모델도 읽어 둔다
+    await 추론메뉴닫기();
     상태.추론단계들 = 단계들;
     상태.지금추론 = 추론단추글() || 단계들[목표] || '';
     try { await chrome.storage.local.set({ [추론이름열쇠]: 단계들 }); } catch (e) { /* 넘어간다 */ }
     if (!맞음) 알림('⚠ 추론 수준을 ' + (단계들[목표] || (목표 + 1) + '번째 칸') + ' 으로 바꾸지 못했습니다');
     return 맞음;
+  } finally {
+    상태.추론맞추는중 = false;
+  }
+}
+
+async function 추론메뉴닫기() {
+  키누르기(document.activeElement || document.body, 'Escape');
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+  await 잠깐(200);
+}
+
+// ── 모델 (GPT-6 · GPT-5.6 Sol …) ─────────────────────────────────
+// 추론 수준과 같은 메뉴에 있어, 메뉴가 열려 있을 때만 읽힌다. 단추 글자에는 수준만 보이고 모델은 안 보인다.
+function 모델줄읽기() {
+  return 모두찾기(셀렉터.모델줄).map((줄) => {
+    const 줄들 = String(줄.innerText || 줄.textContent || '').split(String.fromCharCode(10)).map((글) => 글.trim()).filter(Boolean);
+    // 'GPT-5.5' 아래에 'Leaving on October 14' 같은 덧말이 붙는 줄이 있다
+    return { 줄, 이름: 줄들[0] || '', 덧말: 줄들.slice(1).join(' '), 고름: 줄.getAttribute('aria-checked') === 'true' };
+  }).filter((모델) => 모델.이름);
+}
+
+function 모델적어두기(줄들) {
+  if (!줄들 || !줄들.length) return;
+  상태.모델들 = 줄들.map((모델) => ({ 이름: 모델.이름, 덧말: 모델.덧말 }));
+  const 고른 = 줄들.find((모델) => 모델.고름);
+  if (고른) 상태.지금모델 = 고른.이름;
+}
+
+// 이름을 주면 그 모델로 바꾸고, 안 주면 목록만 읽는다. true = 됨. 쓰는 중·넣는 중이면 건드리지 않고 false.
+async function 모델맞추기(이름) {
+  if (상태.추론맞추는중 || 상태.처리중 || 스트리밍중()) return false;
+  const 단추 = 찾기(셀렉터.추론단추);
+  if (!단추) return false;
+  상태.추론맞추는중 = true;
+  try {
+    키누르기(단추, 'Enter');
+    let 끝 = Date.now() + 추론살핌ms;
+    let 줄들 = 모델줄읽기();
+    while (!줄들.length && Date.now() < 끝) { await 잠깐(100); 줄들 = 모델줄읽기(); }
+    if (!줄들.length) {
+      await 추론메뉴닫기();
+      알림('⚠ ChatGPT 모델 목록을 열지 못했습니다');
+      return false;
+    }
+    let 됨 = true;
+    if (이름) {
+      const 대상 = 줄들.find((모델) => 모델.이름 === 이름);
+      if (!대상) {
+        됨 = false;
+        알림('⚠ ChatGPT 에 ' + 이름 + ' 모델이 없습니다');
+      } else if (!대상.고름) {
+        대상.줄.click();
+        됨 = false;
+        끝 = Date.now() + 추론살핌ms;
+        while (!됨 && Date.now() < 끝) {
+          await 잠깐(150);
+          const 다시 = 모델줄읽기();                 // 누를 때마다 다시 그려져서 새로 찾는다
+          if (다시.length) 줄들 = 다시;
+          됨 = 다시.some((모델) => 모델.고름 && 모델.이름 === 이름);
+        }
+        if (!됨) 알림('⚠ 모델을 ' + 이름 + ' 으로 바꾸지 못했습니다');
+      }
+    }
+    모델적어두기(줄들);
+    await 추론메뉴닫기();
+    상태.지금추론 = 추론단추글() || 상태.지금추론;      // 모델마다 고를 수 있는 수준이 다를 수 있다
+    return 됨;
   } finally {
     상태.추론맞추는중 = false;
   }

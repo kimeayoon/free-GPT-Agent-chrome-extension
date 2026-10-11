@@ -2779,9 +2779,89 @@ function 추론목표번호() {
   return typeof 목표 === 'number' ? Math.min(목표, 단계.length - 1) : 단계.length - 1;
 }
 
+// 모델(GPT-6 · GPT-5.6 Sol …)은 ChatGPT 메뉴를 열어 봐야 알 수 있다. 탭이 알려 주기 전에는 지난번에 본 것을 쓴다.
+function 지금모델이름() {
+  if (화면.모델) return 화면.모델;
+  try { return localStorage.getItem('지금모델') || ''; } catch (e) { return ''; }
+}
+
+function 모델목록() {
+  if (화면.모델들 && 화면.모델들.length) return 화면.모델들;
+  try { return JSON.parse(localStorage.getItem('모델들') || '[]') || []; } catch (e) { return []; }
+}
+
+function 모델기억하기() {
+  try {
+    if (화면.모델) localStorage.setItem('지금모델', 화면.모델);
+    if (화면.모델들 && 화면.모델들.length) localStorage.setItem('모델들', JSON.stringify(화면.모델들));
+  } catch (e) { /* 넘어간다 */ }
+}
+
 function 추론글그리기() {
   const 단계 = 추론단계들();
-  $('추론글').textContent = '추론 ' + 추론이름(화면.추론 || 단계[추론목표번호()]);
+  const 수준 = 추론이름(화면.추론 || 단계[추론목표번호()]);
+  const 모델 = 지금모델이름();
+  $('추론글').textContent = 모델 ? 모델 + ' · ' + 수준 : '추론 ' + 수준;
+}
+
+function 모델줄그리기(칸) {
+  칸.textContent = '';
+  const 목록 = 모델목록();
+  const 머리 = document.createElement('div');
+  머리.className = '추론모델머리';
+  머리.textContent = '모델';
+  칸.appendChild(머리);
+  if (!목록.length) {
+    const 빈 = document.createElement('div');
+    빈.className = '추론모델빈';
+    빈.textContent = 'ChatGPT 에서 모델 목록을 읽는 중…';
+    칸.appendChild(빈);
+    return;
+  }
+  const 지금 = 지금모델이름();
+  for (const 모델 of 목록) {
+    const 줄 = document.createElement('button');
+    줄.className = '추론모델줄' + (모델.이름 === 지금 ? ' 고름' : '');
+    const 표 = document.createElement('span');
+    표.className = '표';
+    표.textContent = 모델.이름 === 지금 ? '●' : '○';
+    const 이름 = document.createElement('span');
+    번역멈춤(() => { 이름.textContent = 모델.이름; });        // 모델 이름은 ChatGPT 가 붙인 것 그대로
+    줄.append(표, 이름);
+    if (모델.덧말) {
+      const 덧 = document.createElement('span');
+      덧.className = '덧말';
+      번역멈춤(() => { 덧.textContent = 모델.덧말; });
+      줄.appendChild(덧);
+    }
+    줄.onclick = (e) => { e.stopPropagation(); 모델바꾸기(모델.이름); };
+    칸.appendChild(줄);
+  }
+}
+
+// 추론 창을 열 때마다 탭에게 물어 새로 읽는다(사람이 ChatGPT 에서 직접 바꿨을 수 있다).
+async function 모델새로읽기(칸) {
+  const 답 = await 탭에게('모델목록');
+  if (!답 || !답.됨) return;
+  if (답.모델) 화면.모델 = 답.모델;
+  if (답.모델들 && 답.모델들.length) 화면.모델들 = 답.모델들;
+  모델기억하기();
+  추론글그리기();
+  if (칸 && 칸.isConnected !== false && $('메뉴').style.display === 'block') 모델줄그리기(칸);
+}
+
+async function 모델바꾸기(이름) {
+  메뉴닫기();
+  알림('모델을 ' + 이름 + ' 으로 바꾸는 중…');
+  const 답 = await 탭에게('모델바꾸기', 이름);
+  if (답) {
+    if (답.모델) 화면.모델 = 답.모델;
+    if (답.모델들 && 답.모델들.length) 화면.모델들 = 답.모델들;
+    if (답.추론) 화면.추론 = 답.추론;
+    모델기억하기();
+    알림(답.됨 ? '모델: ' + (답.모델 || 이름) : '⚠ ChatGPT 모델을 못 바꿨습니다(쓰는 중이면 끝난 뒤 다시).');
+  }
+  추론글그리기();
 }
 
 function 추론창열기() {
@@ -2827,12 +2907,17 @@ function 추론창열기() {
     칸이름.appendChild(칸);
   }
 
-  틀.append(머리, 끝, 막대, 칸이름);
+  const 모델칸 = document.createElement('div');
+  모델칸.className = '추론모델들';
+  모델줄그리기(모델칸);
+
+  틀.append(머리, 끝, 막대, 칸이름, 모델칸);
   메뉴.appendChild(틀);
   메뉴.style.display = 'block';
   const 네모 = $('추론알약').getBoundingClientRect();
   메뉴.style.left = Math.max(6, Math.min(네모.left, window.innerWidth - 메뉴.offsetWidth - 6)) + 'px';
   메뉴.style.top = Math.max(6, 네모.top - 메뉴.offsetHeight - 4) + 'px';
+  모델새로읽기(모델칸);
 }
 
 async function 추론바꾸기(번) {

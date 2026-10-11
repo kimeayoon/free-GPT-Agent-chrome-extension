@@ -41,6 +41,10 @@ const 셀렉터 = {
   // (2026-09-29 형님 Chrome 에서 확인. 가짜 pointerdown 으로는 안 열리고 Enter 로 열린다)
   추론단추: ['form button[aria-label="ChatGPT 모델 선택"]', 'button[aria-label="ChatGPT 모델 선택"]'],
   추론막대: ['[data-reasoning-slider="true"]'],
+  // 모델 고르기. 같은 메뉴 안에 'GPT-6' · 'GPT-5.6 Sol' 같은 줄(role=menuitemradio, 고른 것은 aria-checked=true)이 있다.
+  // '간단히 보기' 에서는 가려져 있지만 .click() 은 먹고, 눌러도 메뉴는 열린 채다.
+  // (2026-10-11 형님 Chrome 에서 GPT-6 ↔ GPT-5.6 Sol 을 바꿨다 되돌려 확인)
+  모델줄: ['[role="menu"] [role="menuitemradio"]'],
 
   // 파일 첨부 칸. 그림만 받는 칸(accept="image/*")이 따로 있어서 아무 파일이나 받는 것을 고른다.
   파일넣기: [

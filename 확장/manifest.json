@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "GPT Local Agent",
-  "version": "3.107.0",
+  "version": "3.108.0",
   "description": "ChatGPT 옆에 붙는 조종판. 승인·일할 곳·진행 상황을 여기서 봅니다.",
   "permissions": [
     "storage",

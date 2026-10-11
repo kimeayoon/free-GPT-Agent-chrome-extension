@@ -873,6 +873,17 @@
     font-size: 11px; margin-bottom: 4px; }
   #메뉴 .추론막대 { width: 100%; accent-color: var(--강조); cursor: pointer; }
   #메뉴 .추론칸이름 { display: flex; justify-content: space-between; font-size: 11px; color: var(--흐린글); }
+  /* 모델 고르기 (추론 막대 아래) */
+  #메뉴 .추론모델들 { margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--선); }
+  #메뉴 .추론모델머리 { color: var(--아주흐린글); font-size: 11px; margin-bottom: 4px; }
+  #메뉴 .추론모델빈 { color: var(--흐린글); font-size: 12px; padding: 4px 0; }
+  #메뉴 .추론모델줄 { display: flex; align-items: baseline; gap: 6px; width: 100%; padding: 5px 4px; border: 0; border-radius: 6px;
+                    background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  #메뉴 .추론모델줄:hover { background: var(--눌림, rgba(127,127,127,.15)); }
+  #메뉴 .추론모델줄 .표 { color: var(--아주흐린글); font-size: 10px; }
+  #메뉴 .추론모델줄.고름 { font-weight: 650; }
+  #메뉴 .추론모델줄.고름 .표 { color: var(--강조); }
+  #메뉴 .추론모델줄 .덧말 { color: var(--아주흐린글); font-size: 11px; margin-left: auto; }
 
   /* ── 덮는 창 (목표 / 설정) ── */
   .덮는창 {
@@ -1073,7 +1084,7 @@
       <span id="모드글">자동</span><span class="꺾쇠">⌄</span>
     </button>
     <button class="민단추" id="더하기" title="일할 폴더 고르기">＋</button>
-    <button class="민단추" id="추론알약" title="ChatGPT 추론 수준 — 더 빠르게 ↔ 더 스마트하게">
+    <button class="민단추" id="추론알약" title="ChatGPT 모델과 추론 수준 — 더 빠르게 ↔ 더 스마트하게">
       <span id="추론글">추론 깊게</span><span class="꺾쇠">⌄</span>
     </button>
   </div>

@@ -44,6 +44,12 @@ const 표본 = [
   ['🔧 일꾼 "검토" 을 새 탭에서 부릅니다(리뷰어)', '🔧 Starting helper "검토" in a new tab (리뷰어)'],
   ['🔧 일꾼 "검토" 결과를 받았습니다', '🔧 Got the result from helper "검토"'],
   ['빌드 끝났습니다 (1분 5초)', '빌드 finished (1m 5s)'],
+  ['모델을 GPT-5.6 Sol 으로 바꾸는 중…', 'Changing the model to GPT-5.6 Sol…'],
+  ['모델: GPT-6', 'Model: GPT-6'],
+  ['GPT-6 · 깊게', 'GPT-6 · Deep'],
+  ['GPT-5.6 Sol · 보통', 'GPT-5.6 Sol · Medium'],
+  ['⚠ ChatGPT 모델을 못 바꿨습니다(쓰는 중이면 끝난 뒤 다시).', '⚠ Could not change the model (if ChatGPT is writing, try again after it finishes).'],
+  ['ChatGPT 에서 모델 목록을 읽는 중…', 'Reading the model list from ChatGPT…'],
 ];
 
 // 한글이 남아도 되는 문장(사용자 · 서버가 준 이름이 섞인 것)

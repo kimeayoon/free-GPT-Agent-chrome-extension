@@ -48,7 +48,7 @@ import tools_worker
 import 사이트
 import 현황
 
-버전 = "1.50.0"
+버전 = "1.51.0"
 이름키 = "나물"   # 요청에서 도구 이름을 담는 키 (확장의 protocol.js 와 맞춰야 함)
 
 # 내부 이름으로 모은 뒤 공개 이름으로 갈아끼운다(aliases.py 참고).

@@ -104,10 +104,29 @@ class 가짜창 {
     this.추론열림 = false;
     this.추론연수 = 0;
     this.추론단추 = new 가짜요소({
-      get innerText() { return 창.추론열림 ? '추론 수준' : 창.추론이름들[창.추론값]; },
+      // 기본 모델이 아니면 수준 앞에 모델이 붙는다('5.6 High')
+      get innerText() { return 창.추론열림 ? '추론 수준' : (창.단추앞말 ? 창.단추앞말 + ' ' : '') + 창.추론이름들[창.추론값]; },
       붙임: { keydown: (사건) => { if (사건.key === 'Enter') { 창.추론열림 = true; 창.추론연수 += 1; } } },
     });
     return this;
+  }
+  // 같은 메뉴 안의 모델 줄(2026-10-11 형님 Chrome 에서 본 그대로): role=menuitemradio, 고른 것은 aria-checked=true.
+  // 메뉴가 열려 있을 때만 있고, 눌러도 메뉴는 닫히지 않는다. 덧말은 이름 아래 줄에 붙는다.
+  모델칸만들기(이름들 = ['GPT-6', 'GPT-5.6 Sol', 'GPT-5.5\nLeaving on October 14'], 처음 = 0) {
+    this.모델이름들 = 이름들;
+    this.모델값 = 처음;
+    this.모델누름 = [];
+    this.모델안먹힘 = false;        // true 면 눌러도 안 바뀐다(실패 흉내)
+    return this;
+  }
+  모델줄() {
+    if (!this.추론열림 || !this.모델이름들) return [];
+    const 창 = this;
+    return this.모델이름들.map((글, 번) => new 가짜요소({
+      innerText: 글,
+      getAttribute: (k) => (k === 'aria-checked' ? String(창.모델값 === 번) : null),
+      누르면: () => { 창.모델누름.push(글.split('\n')[0]); if (!창.모델안먹힘) 창.모델값 = 번; },
+    }));
   }
   추론막대() {
     if (!this.추론열림) return [];
@@ -216,6 +235,7 @@ class 가짜창 {
     if (무엇 === '편집단추들') return this.편집재전송수 !== undefined ? this.편집칸단추들() : [];
     if (무엇 === '추론단추') return this.추론단추 ? [this.추론단추] : [];
     if (무엇 === '추론막대') return this.추론막대 ? this.추론막대() : [];
+    if (무엇 === '모델줄') return this.모델줄 ? this.모델줄() : [];
     if (무엇 === '한도안내') return (this.한도안내 || []).map((글) => new 가짜요소({ textContent: 글 }));
     if (무엇 === '파일칸') return this.파일칸요소 ? [this.파일칸요소] : [];
     if (무엇 === '첨부단추') return this.첨부단추들();
