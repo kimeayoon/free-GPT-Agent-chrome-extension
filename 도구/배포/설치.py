@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
-"""GPT Local Agent installer — runs inside the one-file setup (GPT-LocalAgent-Setup.cmd).
+"""GPT Local Agent server installer — runs inside the one-file setup (GPT-LocalAgent-Server-Setup-<version>.cmd).
 
 What it does (per-user only, no administrator rights needed):
   1. Unpacks the files to %LOCALAPPDATA%\\GPTLocalAgent (on update: replaces code, keeps your settings and chat data)
   2. Creates server/설정.json (settings) for this user (read/write scope = the user folder)
   3. Installs Pillow (for the image tools; optional), starts the server and makes it start at login
-  4. Guides you through loading the Chrome extension (Chrome requires this one step to be done by a person)
+  4. Guides you through loading the Chrome extension (a separate download: GPT-LocalAgent-Extension-<version>.zip).
+     If that zip sits next to this setup file, it is unpacked into the install folder for you.
   5. Copies the ChatGPT project instructions to the clipboard
 
   Uninstall: run uninstall.cmd in the install folder.
@@ -27,7 +28,8 @@ from pathlib import Path
 실행키이름 = "GPTLocalAgent"
 네이티브이름 = "com.local_agent.server"
 묶음칸 = Path(__file__).resolve().parent
-코드칸들 = ("서버", "확장", "문서", "도구")
+코드칸들 = ("서버", "문서", "도구")           # the extension ships as its own zip
+릴리스주소 = "https://github.com/kimeayoon/free-GPT-Agent-chrome-extension/releases"
 # Never overwrite these if they already exist (the user's settings, permissions, room list)
 지킬것 = {"설정.json", "권한.json", "허용사이트.json", "방목록.json"}
 제외 = {"__pycache__"}
@@ -89,6 +91,25 @@ def 설정만들기(대상: Path) -> bool:
     글 = 템플릿.replace("{{HOME}}", 집).replace("{{INSTALL}}", 설치)
     json.loads(글)                       # stop here if it is broken
     자리.write_text(글, encoding="utf-8")
+    return True
+
+
+def 확장풀기(대상: Path) -> bool:
+    """Unpack GPT-LocalAgent-Extension*.zip found next to the setup file into <install>/확장. True if unpacked."""
+    import zipfile
+    곁 = Path(os.environ.get("GPTA_SETUP_DIR") or 묶음칸)
+    후보 = sorted(곁.glob("GPT-LocalAgent-Extension*.zip"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if not 후보:
+        return False
+    확장칸 = 대상 / "확장"
+    with zipfile.ZipFile(후보[0]) as 압축:
+        이름들 = [n for n in 압축.namelist() if not n.endswith("/")]
+        if not any(Path(n).name == "manifest.json" for n in 이름들):
+            return False                    # not our extension zip
+        shutil.rmtree(확장칸, ignore_errors=True)          # replace the old copy: stale files would stay loaded otherwise
+        확장칸.mkdir(parents=True, exist_ok=True)
+        for n in 이름들:                     # flatten the single top folder; names only, so nothing can escape 확장칸
+            (확장칸 / Path(n).name).write_bytes(압축.read(n))
     return True
 
 
@@ -253,7 +274,7 @@ def 설치(옵션):
     말(f"   - limit reading/writing to your user folder ({Path.home()})")
     말("   - start a server that only listens on this PC (127.0.0.1) and start it at login")
     말("   - install Pillow for the image tools (optional)")
-    말("   - show you how to load the browser extension (you do this step yourself)")
+    말("   - show you how to load the browser extension (a separate download; you do this step yourself)")
     말("   - copy the ChatGPT project instructions to the clipboard")
     말("")
     말("  To remove it later: run uninstall.cmd in the install folder.")
@@ -267,6 +288,13 @@ def 설치(옵션):
     (대상 / "workspace").mkdir(exist_ok=True)
     새설정 = 설정만들기(대상)
     말(f"  OK  {갯수} files - settings {'created' if 새설정 else 'kept as they were'}")
+    try:
+        확장풀림 = 확장풀기(대상)
+    except Exception as e:
+        확장풀림 = False
+        말(f"  --  Could not unpack the extension zip ({e}).")
+    if 확장풀림:
+        말("  OK  Unpacked the extension zip found next to this setup file")
     제거파일 = 대상 / "uninstall.cmd"
     제거파일.write_bytes(
         ('@echo off\r\nchcp 65001 >nul\r\n'
@@ -300,19 +328,28 @@ def 설치(옵션):
 
     말("\n[4/5] Load the extension in Chrome (one time - you have to do this step yourself)")
     확장칸 = 대상 / "확장"
-    클립 = 클립보드에(str(확장칸))
+    if not (확장칸 / "manifest.json").exists():
+        말("  --  The extension is a separate download. Get GPT-LocalAgent-Extension-<version>.zip from")
+        말(f"        {릴리스주소}")
+        말("      and unzip it (anywhere you will keep it). Use that folder in step 3 below.")
+        확장칸 = None
+    클립 = 클립보드에(str(확장칸)) if 확장칸 else False
     브라우저, 브라우저이름 = 브라우저찾기()
     if 브라우저:
         주소 = "chrome://extensions" if 브라우저이름 == "Chrome" else "edge://extensions"
         subprocess.Popen([브라우저, 주소])
     else:
         말("  --  Chrome was not found. Open Chrome yourself and go to chrome://extensions")
-    subprocess.Popen(["explorer", str(확장칸)])
+    if 확장칸:
+        subprocess.Popen(["explorer", str(확장칸)])
     말("")
     말("   1) On the extensions page, turn on 'Developer mode' (top right)")
     말("   2) Click 'Load unpacked' (top left)")
-    말("   3) Choose this folder" + (" (the path is on your clipboard - paste it into the address bar with Ctrl+V)" if 클립 else ""))
-    말(f"        {확장칸}")
+    if 확장칸:
+        말("   3) Choose this folder" + (" (the path is on your clipboard - paste it into the address bar with Ctrl+V)" if 클립 else ""))
+        말(f"        {확장칸}")
+    else:
+        말("   3) Choose the folder you unzipped (the one that contains manifest.json)")
     말("   4) 'GPT Local Agent' should appear in the list")
     말("")
     엔터기다리기("  Press Enter after you have loaded the extension... ", 자동)

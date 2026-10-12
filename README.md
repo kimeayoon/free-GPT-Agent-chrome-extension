@@ -36,17 +36,45 @@ ChatGPT (웹)  ->  Chrome 확장  ->  127.0.0.1:8765  ->  로컬 Python 서버  
 - 웹 글 읽기, 그림을 채팅에 붙이기
 - 화면 보기, 키보드·마우스 보내기 — **창 하나, 시간 제한, 사용자 승인이 있어야만** 됩니다
 - 읽기 전용 일꾼(보조 에이전트) 부르기
+- 옆 판에서 ChatGPT 모델(GPT-6 · GPT-5.6 Sol 등)과 추론 수준 바꾸기
+- 옆 판 언어: 영어 기본, ⋮ 메뉴의 Language 에서 한국어로 바꿈
 
 ### 설치 (Windows)
 
-**쉬운 방법:** [Releases](../../releases)에서 `GPT-LocalAgent-Setup.cmd`를 받아 더블클릭합니다.
-파이썬(3.10 이상)을 확인하고, 서버를 설치하고, 확장을 불러오는 방법을 순서대로 안내합니다.
+**쉬운 방법:** [Releases](../../releases)에서 아래 두 파일을 **같은 폴더에** 받습니다.
+
+| 파일 | 내용 |
+|---|---|
+| `GPT-LocalAgent-Server-Setup-<버전>.cmd` | 로컬 서버 설치 프로그램 |
+| `GPT-LocalAgent-Extension-<버전>.zip` | 크롬 확장 |
+
+1. `GPT-LocalAgent-Server-Setup-<버전>.cmd`를 더블클릭합니다. 파이썬(3.10 이상)을 확인하고 서버를 설치합니다.
+   같은 폴더에 있는 확장 zip은 설치 폴더 안에 알아서 풀어 줍니다.
+2. 안내대로 Chrome → `chrome://extensions` → *개발자 모드* → *압축해제된 확장 프로그램을 로드* → 안내된 `확장` 폴더를 고릅니다.
+3. ChatGPT에서 *프로젝트*를 만들고, 클립보드에 복사된 지침을 프로젝트 *지침*에 붙여넣습니다.
+   지침은 한국어로 쓰여 있지만 그대로 붙이면 됩니다. ChatGPT는 사용자가 쓰는 언어로 답합니다.
+4. 그 프로젝트 안에서 새 대화를 열고, 확장 아이콘을 눌러 옆 판을 연 뒤 **＋**로 일할 폴더를 고릅니다.
 
 **직접 설치:**
 1. `python -X utf8 서버/서버.py` 실행 (Python 3.10 이상, 그림 도구를 쓰려면 Pillow 선택)
 2. Chrome → `chrome://extensions` → *개발자 모드* 켜기 → *압축해제된 확장 프로그램을 로드* → `확장` 폴더 선택
 3. ChatGPT에서 *프로젝트*를 만들고, `문서/프로토콜.md`의 코드 울타리 안쪽 글을 프로젝트 *지침*에 붙여넣기
 4. 그 프로젝트 안에서 새 대화를 열고, 확장 아이콘을 눌러 옆 판을 연 뒤 **＋**로 일할 폴더 고르기
+
+### 서버는 어떻게 실행되나
+
+| 항목 | 내용 |
+|---|---|
+| 설치 위치 | `%LOCALAPPDATA%\GPTLocalAgent` (관리자 권한 없이, 이 사용자에게만) |
+| 실행 | `python -X utf8 서버\서버.py` 가 창 없이 돕니다 |
+| 자동 시작 | 로그인할 때 켜지고, 꺼져 있으면 확장이 옆 판을 열 때 다시 켭니다 |
+| 주소 | `127.0.0.1:8765` — 내 PC 안에서만 듣습니다. 확장과 사용자가 허용한 사이트의 요청만 받습니다 |
+| 흐름 | ChatGPT 답 속의 요청 → 확장이 읽음 → 서버가 내 PC에서 실행 → 결과를 대화에 파일로 붙임 |
+| 기록 · 설정 | `서버\서버출력.txt` · `서버\설정.json` |
+| 끄기 · 지우기 | 설치 폴더의 `uninstall.cmd` (대화 기록을 남길지 묻습니다) |
+| 손으로 켜기 | `도구\서버 켜기.bat` |
+
+버전은 한 숫자(주.부.수)이고, 서버 · 확장 · 릴리스가 같은 숫자를 씁니다. 옆 판 아래에 서버 버전이 보입니다.
 
 ### 안전 주의
 
@@ -100,17 +128,45 @@ Secret files such as `.env` are **write-only** for ChatGPT, so you can fill in A
 - Read web pages, attach images to the chat
 - Look at your screen and send keyboard/mouse input — **only with your explicit, per-window, time-limited approval**
 - Spawn read-only helper agents
+- Switch the ChatGPT model (GPT-6, GPT-5.6 Sol ...) and thinking level from the side panel
+- Side panel in English by default; switch to Korean from the ⋮ menu → Language
 
 ### Install (Windows)
 
-**Easy:** download `GPT-LocalAgent-Setup.cmd` from the [Releases](../../releases) page and double-click it.
-It checks Python (3.10+), installs the server, and walks you through loading the extension.
+**Easy:** download these two files from the [Releases](../../releases) page **into the same folder**.
+
+| File | What it is |
+|---|---|
+| `GPT-LocalAgent-Server-Setup-<version>.cmd` | installer for the local server |
+| `GPT-LocalAgent-Extension-<version>.zip` | the Chrome extension |
+
+1. Double-click `GPT-LocalAgent-Server-Setup-<version>.cmd`. It checks Python (3.10+) and installs the server.
+   The extension zip in the same folder is unpacked into the install folder for you.
+2. Follow the prompts: Chrome → `chrome://extensions` → *Developer mode* → *Load unpacked* → pick the `확장` folder it shows.
+3. Create a ChatGPT *Project* and paste the instructions (already on your clipboard) into its *Instructions*.
+   The instructions are written in Korean; paste them as they are. ChatGPT answers in the language you write in.
+4. Open a chat inside that project, click the extension icon to open the side panel, pick a work folder with **+**.
 
 **Manual:**
 1. `python -X utf8 서버/서버.py` (Python 3.10+; Pillow is optional, for image tools)
 2. Chrome → `chrome://extensions` → turn on *Developer mode* → *Load unpacked* → select the `확장` folder
 3. Create a ChatGPT *Project* and paste the instructions from `문서/프로토콜.md` (the text inside the code fence) into its *Instructions*
 4. Open a chat inside that project, click the extension icon to open the side panel, pick a work folder with **+**
+
+### How the server runs
+
+| Item | Details |
+|---|---|
+| Install location | `%LOCALAPPDATA%\GPTLocalAgent` (per user, no administrator rights) |
+| Process | `python -X utf8 서버\서버.py`, running without a window |
+| Auto-start | starts when you log in; if it is not running, the extension starts it when you open the side panel |
+| Address | `127.0.0.1:8765` — this PC only. It accepts requests only from the extension and from websites you approve |
+| Flow | request in ChatGPT's answer → the extension reads it → the server runs it on your PC → the result is attached to the chat as a file |
+| Log · settings | `서버\서버출력.txt` · `서버\설정.json` |
+| Stop · remove | `uninstall.cmd` in the install folder (asks whether to keep your chat history) |
+| Start by hand | `도구\서버 켜기.bat` |
+
+There is one version number (major.minor.patch) shared by the server, the extension and the release. The side panel shows the server version.
 
 ### Safety notes
 

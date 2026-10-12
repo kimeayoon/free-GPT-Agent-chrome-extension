@@ -48,7 +48,7 @@ def 모으기() -> list:
     for 파일 in sorted((뿌리 / "도구").glob("*")):
         if 파일.is_file() and 파일.suffix in (".py", ".bat"):
             나온.append((f"도구/{파일.name}", 파일))
-    for 이름 in ("설치.py", "부트머리.cmd", "만들기.py", "깃허브폴더만들기.py", "README.en.md", "README.ko.md"):
+    for 이름 in ("설치.py", "부트머리.cmd", "만들기.py", "깃허브폴더만들기.py", "README_깃허브.md"):
         나온.append((f"도구/배포/{이름}", 이칸 / 이름))
     시험 = 뿌리 / "도구" / "시험"
     for 파일 in sorted(시험.iterdir()):
@@ -130,9 +130,8 @@ def main():
         가는곳 = 나가는곳 / 이름
         가는곳.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(자리, 가는곳)
-    # README 원본은 같은 폴더의 README_깃허브.md (한국어 위 · 영어 아래)
-    shutil.copy2(이칸 / "README.en.md", 나가는곳 / "README.md")        # 영어 기본
-    shutil.copy2(이칸 / "README.ko.md", 나가는곳 / "README.ko.md")     # 한국어(README.md 맨 위 링크로 이동)
+    # README 원본은 같은 폴더의 README_깃허브.md 하나(한국어 위 · 영어 아래) — 깃허브 루트의 README.md 와 같은 글이다
+    shutil.copy2(이칸 / "README_깃허브.md", 나가는곳 / "README.md")
     (나가는곳 / ".gitignore").write_text(GITIGNORE, encoding="utf-8", newline="\n")
     수 = sum(1 for _ in 나가는곳.rglob("*") if _.is_file())
     print(f"✓ {나가는곳}")

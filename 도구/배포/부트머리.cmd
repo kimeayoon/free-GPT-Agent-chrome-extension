@@ -51,6 +51,7 @@ import base64, io, os, runpy, sys, tempfile, zipfile
 짐 = 원.split('#PAYLOAD\n', 1)[1]
 임시 = tempfile.mkdtemp(prefix='gpta_')
 zipfile.ZipFile(io.BytesIO(base64.b64decode(짐))).extractall(임시)
+os.environ['GPTA_SETUP_DIR'] = os.path.dirname(os.path.abspath(sys.argv[1]))
 sys.argv = [os.path.join(임시, '_설치.py')] + sys.argv[2:]
 sys.path.insert(0, 임시)
 runpy.run_path(sys.argv[0], run_name='__main__')
